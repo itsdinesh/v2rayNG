@@ -983,32 +983,39 @@ object V2rayConfigManager {
             NetworkType.WS.type -> {
                 val wssetting = StreamSettingsBean.WsSettingsBean()
                 
-                // Require WSS URL format: wss://host.com/path
+                // Domain fronting configuration:
+                // - host parameter (from WS Host field) = spoofed domain for fronting
+                // - path parameter (from WS Path field) = WSS URL containing real server
+                
+                val spoofedDomain = host.orEmpty()  // This is the domain fronting host from UI
+                
+                // Handle WSS URL format: wss://real-server.com/websocket-path
                 if (path?.startsWith("wss://") == true) {
                     try {
-                        val url = java.net.URI(path)
-                        val actualPath = if (url.path.isNotEmpty()) url.path else "/"
+                        val wssUrl = java.net.URI(path)
+                        // Extract the websocket path from WSS URL, default to "/" if empty
+                        val websocketPath = if (wssUrl.path.isNotEmpty()) wssUrl.path else "/"
                         
                         // Set the websocket path (extracted from WSS URL)
-                        wssetting.path = actualPath
+                        wssetting.path = websocketPath
                         
-                        // Set spoofed/fake Host header using the host parameter (for domain fronting)
-                        wssetting.headers.Host = host.orEmpty()
+                        // Set spoofed Host header for domain fronting (from WS Host field)
+                        wssetting.headers.Host = spoofedDomain
                         
-                        // For SNI, use the host parameter for spoofing
-                        sni = host
+                        // For SNI, use the spoofed domain for domain fronting
+                        sni = spoofedDomain
                         
                     } catch (e: Exception) {
-                        // Set defaults if parsing fails
-                        wssetting.path = "/"
-                        wssetting.headers.Host = host.orEmpty()
-                        sni = host
+                        // Set defaults if WSS URL parsing fails
+                        wssetting.path = path ?: "/"
+                        wssetting.headers.Host = spoofedDomain
+                        sni = spoofedDomain
                     }
                 } else {
-                    // Set defaults for invalid format
-                    wssetting.path = "/"
-                    wssetting.headers.Host = host.orEmpty()
-                    sni = host
+                    // Standard WebSocket setup (no domain fronting)
+                    wssetting.path = path ?: "/"
+                    wssetting.headers.Host = spoofedDomain
+                    sni = spoofedDomain
                 }
                 
                 streamSettings.wsSettings = wssetting
