@@ -983,35 +983,19 @@ object V2rayConfigManager {
             NetworkType.WS.type -> {
                 val wssetting = StreamSettingsBean.WsSettingsBean()
                 
-                // Default values
-                var actualHost = host
-                var actualPath = path ?: "/"
-                var fakeHost = host.orEmpty()
+                // Set the websocket path
+                wssetting.path = path ?: "/"
                 
-                // Check if we have a WSS URL format in the path parameter
-                // The WSS URL contains the actual host and path for connection
-                val wssUrl = path // The WSS URL is passed in the path parameter
-                
-                if (wssUrl?.startsWith("wss://") == true) {
-                    try {
-                        val url = java.net.URI(wssUrl)
-                        // Extract actual connection details from WSS URL
-                        actualHost = url.host
-                        actualPath = if (url.path.isNotEmpty()) url.path else "/"
-                        // Use the host parameter as fake/spoofed host (whatever user provided)
-                        fakeHost = host.orEmpty()
-                    } catch (e: Exception) {
-                        // Fallback to original behavior
-                        actualHost = host
-                        fakeHost = host.orEmpty()
-                    }
+                // Set the Host header for websocket handshake
+                // This can be a fake/spoofed host for disguise (e.g., google.com, cloudflare.com)
+                if (!host.isNullOrEmpty()) {
+                    wssetting.headers.Host = host
                 }
                 
-                // Set spoofed/fake host in headers for disguise
-                wssetting.headers.Host = fakeHost
-                // Use actual host for real connection (SNI)
-                sni = actualHost
-                wssetting.path = actualPath
+                // For SNI, use the host parameter if available, otherwise use the server address
+                // This allows for fake host scenarios where SNI matches the fake host
+                sni = if (!host.isNullOrEmpty()) host else null
+                
                 streamSettings.wsSettings = wssetting
             }
 
