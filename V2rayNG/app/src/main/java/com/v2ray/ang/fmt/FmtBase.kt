@@ -152,6 +152,19 @@ open class FmtBase {
     }
 
     fun getServerAddress(profileItem: ProfileItem): String {
+        // Handle WSS URL in path for WebSocket domain fronting
+        if (profileItem.network == NetworkType.WS.type && profileItem.path?.startsWith("wss://") == true) {
+            try {
+                val wssUrl = URI(profileItem.path)
+                // Extract and return the real server address from WSS URL for actual connection
+                val realServerAddress = wssUrl.host
+                return HttpUtil.toIdnDomain(realServerAddress)
+            } catch (e: Exception) {
+                // Fall back to original server if WSS URL parsing fails
+            }
+        }
+
+        // Return the standard server address
         if (Utils.isPureIpAddress(profileItem.server.orEmpty())) {
             return profileItem.server.orEmpty()
         }

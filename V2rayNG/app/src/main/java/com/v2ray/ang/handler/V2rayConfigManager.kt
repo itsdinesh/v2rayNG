@@ -985,9 +985,36 @@ object V2rayConfigManager {
 
             NetworkType.WS.type -> {
                 val wssetting = StreamSettingsBean.WsSettingsBean()
-                wssetting.headers.Host = host.orEmpty()
-                sni = host
-                wssetting.path = path ?: "/"
+                val spoofedDomain = host.orEmpty()
+
+                if (path?.startsWith("wss://") == true) {
+                    try {
+                        val wssUrl = java.net.URI(path)
+                        // Extract the websocket path from WSS URL, default to "/" if empty
+                        val websocketPath = if (wssUrl.path.isNotEmpty()) wssUrl.path else "/"
+
+                        // Set the websocket path (extracted from WSS URL)
+                        wssetting.path = websocketPath
+
+                        // Set spoofed Host header for domain fronting (from WS Host field)
+                        wssetting.headers.Host = spoofedDomain
+
+                        // For SNI, use the spoofed domain for domain fronting
+                        sni = spoofedDomain
+
+                    } catch (e: Exception) {
+                        // Set defaults if WSS URL parsing fails
+                        wssetting.path = path ?: "/"
+                        wssetting.headers.Host = spoofedDomain
+                        sni = spoofedDomain
+                    }
+                } else {
+                    // Standard WebSocket setup (no domain fronting)
+                    wssetting.path = path ?: "/"
+                    wssetting.headers.Host = spoofedDomain
+                    sni = spoofedDomain
+                }
+
                 streamSettings.wsSettings = wssetting
             }
 
