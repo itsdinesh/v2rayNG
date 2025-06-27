@@ -993,11 +993,11 @@ object V2rayConfigManager {
                         // Set the websocket path (extracted from WSS URL)
                         wssetting.path = actualPath
                         
-                        // Set spoofed/fake Host header for disguise (from host parameter)
-                        wssetting.headers.Host = host.orEmpty()
+                        // Set spoofed/fake Host header using actual host from WSS URL
+                        wssetting.headers.Host = actualHost
                         
-                        // For SNI, use the actual host from WSS URL
-                        sni = actualHost
+                        // For SNI, use the host parameter for spoofing
+                        sni = host
                         
                     } catch (e: Exception) {
                         // Set defaults if parsing fails
