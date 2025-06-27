@@ -987,14 +987,13 @@ object V2rayConfigManager {
                 if (path?.startsWith("wss://") == true) {
                     try {
                         val url = java.net.URI(path)
-                        val actualHost = url.host
                         val actualPath = if (url.path.isNotEmpty()) url.path else "/"
                         
                         // Set the websocket path (extracted from WSS URL)
                         wssetting.path = actualPath
                         
-                        // Set spoofed/fake Host header using actual host from WSS URL
-                        wssetting.headers.Host = actualHost
+                        // Set spoofed/fake Host header using the host parameter (for domain fronting)
+                        wssetting.headers.Host = host.orEmpty()
                         
                         // For SNI, use the host parameter for spoofing
                         sni = host
