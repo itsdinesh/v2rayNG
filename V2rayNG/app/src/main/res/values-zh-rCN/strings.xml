@@ -80,6 +80,7 @@
     <string name="server_lab_preshared_key">PreSharedKey (optional)</string>
     <string name="server_lab_short_id">ShortId</string>
     <string name="server_lab_spider_x">SpiderX</string>
+    <string name="server_lab_mldsa65_verify">Mldsa65Verify</string>
     <string name="server_lab_secret_key">SecretKey</string>
     <string name="server_lab_reserved">Reserved (可选，逗号隔开)</string>
     <string name="server_lab_local_address">本地地址 (可选 IPv4/IPv6，逗号隔开)</string>
@@ -244,6 +245,10 @@
     <string name="title_language">语言</string>
     <string name="title_ui_settings">用户界面设置</string>
     <string name="title_pref_ui_mode_night">界面颜色设置</string>
+    <string name="title_pref_use_hev_tunnel">启用新的 TUN 功能</string>
+    <string name="summary_pref_use_hev_tunnel">选择启用后 TUN 将使用 hev-socks5-tunnel 否则使用 badvpn-tun2socks</string>
+    <string name="title_pref_hev_tunnel_loglevel">HevTun 日志级别</string>
+    <string name="title_pref_hev_tunnel_rw_timeout">HevTun 读写超时 (ms, 默认 300000)</string>
 
     <string name="title_logcat">Logcat</string>
     <string name="logcat_copy">复制</string>
