@@ -6,11 +6,11 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.widget.RemoteViews
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.R
-import com.v2ray.ang.handler.V2RayServiceManager
+import com.v2ray.ang.core.CoreServiceManager
+import com.v2ray.ang.core.LauncherManager
 
 class WidgetProvider : AppWidgetProvider() {
     /**
@@ -23,7 +23,7 @@ class WidgetProvider : AppWidgetProvider() {
      */
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        updateWidgetBackground(context, appWidgetManager, appWidgetIds, V2RayServiceManager.isRunning())
+        updateWidgetBackground(context, appWidgetManager, appWidgetIds, CoreServiceManager.isRunning())
     }
 
     /**
@@ -42,11 +42,7 @@ class WidgetProvider : AppWidgetProvider() {
             context,
             R.id.layout_switch,
             intent,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         remoteViews.setOnClickPendingIntent(R.id.layout_switch, pendingIntent)
         if (isRunning) {
@@ -72,10 +68,10 @@ class WidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (AppConfig.BROADCAST_ACTION_WIDGET_CLICK == intent.action) {
-            if (V2RayServiceManager.isRunning()) {
-                V2RayServiceManager.stopVService(context)
+            if (CoreServiceManager.isRunning()) {
+                LauncherManager.stopService(context)
             } else {
-                V2RayServiceManager.startVServiceFromToggle(context)
+                LauncherManager.startServiceFromToggle(context)
             }
         } else if (AppConfig.BROADCAST_ACTION_ACTIVITY == intent.action) {
             AppWidgetManager.getInstance(context)?.let { manager ->

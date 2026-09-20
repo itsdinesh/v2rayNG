@@ -1,94 +1,13 @@
 package com.v2ray.ang.extension
 
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
-import com.v2ray.ang.AngApplication
-import es.dmoral.toasty.Toasty
-import org.json.JSONObject
+import com.v2ray.ang.enums.EConfigType
 import java.io.Serializable
 import java.net.URI
-import java.net.URLConnection
-
-val Context.v2RayApplication: AngApplication?
-    get() = applicationContext as? AngApplication
-
-/**
- * Shows a toast message with the given resource ID.
- *
- * @param message The resource ID of the message to show.
- */
-fun Context.toast(message: Int) {
-    Toasty.normal(this, message).show()
-}
-
-/**
- * Shows a toast message with the given text.
- *
- * @param message The text of the message to show.
- */
-fun Context.toast(message: CharSequence) {
-    Toasty.normal(this, message).show()
-}
-
-/**
- * Shows a toast message with the given resource ID.
- *
- * @param message The resource ID of the message to show.
- */
-fun Context.toastSuccess(message: Int) {
-    Toasty.success(this, message, Toast.LENGTH_SHORT, true).show()
-}
-
-/**
- * Shows a toast message with the given text.
- *
- * @param message The text of the message to show.
- */
-fun Context.toastSuccess(message: CharSequence) {
-    Toasty.success(this, message, Toast.LENGTH_SHORT, true).show()
-}
-
-/**
- * Shows a toast message with the given resource ID.
- *
- * @param message The resource ID of the message to show.
- */
-fun Context.toastError(message: Int) {
-    Toasty.error(this, message, Toast.LENGTH_SHORT, true).show()
-}
-
-/**
- * Shows a toast message with the given text.
- *
- * @param message The text of the message to show.
- */
-fun Context.toastError(message: CharSequence) {
-    Toasty.error(this, message, Toast.LENGTH_SHORT, true).show()
-}
-
-
-/**
- * Puts a key-value pair into the JSONObject.
- *
- * @param pair The key-value pair to put.
- */
-fun JSONObject.putOpt(pair: Pair<String, Any?>) {
-    put(pair.first, pair.second)
-}
-
-/**
- * Puts multiple key-value pairs into the JSONObject.
- *
- * @param pairs The map of key-value pairs to put.
- */
-fun JSONObject.putOpt(pairs: Map<String, Any?>) {
-    pairs.forEach { put(it.key, it.value) }
-}
+import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 const val THRESHOLD = 1000L
 const val DIVISOR = 1024.0
@@ -113,61 +32,11 @@ fun Long.toTrafficString(): String {
         size /= DIVISOR
         unitIndex++
     }
-    return String.format("%.1f %s", size, units[unitIndex])
+    return String.format(Locale.getDefault(), "%.1f %s", size, units[unitIndex])
 }
-
-val URLConnection.responseLength: Long
-    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-        contentLengthLong
-    } else {
-        contentLength.toLong()
-    }
 
 val URI.idnHost: String
     get() = host?.replace("[", "")?.replace("]", "").orEmpty()
-
-/**
- * Removes all whitespace from the string.
- *
- * @return The string without whitespace.
- */
-fun String?.removeWhiteSpace(): String? = this?.replace(" ", "")
-
-/**
- * Converts the string to a Long value, or returns 0 if the conversion fails.
- *
- * @return The Long value.
- */
-fun String.toLongEx(): Long = toLongOrNull() ?: 0
-
-/**
- * Listens for package changes and executes a callback when a change occurs.
- *
- * @param onetime Whether to unregister the receiver after the first callback.
- * @param callback The callback to execute when a package change occurs.
- * @return The BroadcastReceiver that was registered.
- */
-fun Context.listenForPackageChanges(onetime: Boolean = true, callback: () -> Unit) =
-    object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            callback()
-            if (onetime) context.unregisterReceiver(this)
-        }
-    }.apply {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(this, IntentFilter().apply {
-                addAction(Intent.ACTION_PACKAGE_ADDED)
-                addAction(Intent.ACTION_PACKAGE_REMOVED)
-                addDataScheme("package")
-            }, Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(this, IntentFilter().apply {
-                addAction(Intent.ACTION_PACKAGE_ADDED)
-                addAction(Intent.ACTION_PACKAGE_REMOVED)
-                addDataScheme("package")
-            })
-        }
-    }
 
 /**
  * Retrieves a serializable object from the Bundle.
@@ -192,21 +61,35 @@ inline fun <reified T : Serializable> Intent.serializable(key: String): T? = whe
 }
 
 /**
- * Checks if the CharSequence is not null and not empty.
+ * Checks if the config type is a group type (PolicyGroup or ProxyChain).
  *
- * @return True if the CharSequence is not null and not empty, false otherwise.
+ * @return True if the config type is PolicyGroup or ProxyChain, false otherwise.
  */
-fun CharSequence?.isNotNullEmpty(): Boolean = this != null && this.isNotEmpty()
-
-fun String.concatUrl(vararg paths: String): String {
-    val builder = StringBuilder(this.trimEnd('/'))
-
-    paths.forEach { path ->
-        val trimmedPath = path.trim('/')
-        if (trimmedPath.isNotEmpty()) {
-            builder.append('/').append(trimmedPath)
-        }
-    }
-
-    return builder.toString()
+fun EConfigType.isGroupType(): Boolean {
+    return this == EConfigType.POLICYGROUP || this == EConfigType.PROXYCHAIN
 }
+
+/**
+ * Checks if the config type is a complex type (Custom, PolicyGroup, or ProxyChain).
+ *
+ * @return True if the config type is Custom, PolicyGroup, or ProxyChain, false otherwise.
+ */
+fun EConfigType.isComplexType(): Boolean {
+    return this == EConfigType.CUSTOM || this == EConfigType.POLICYGROUP || this == EConfigType.PROXYCHAIN
+}
+
+/**
+ * Shorthand for delay with Int milliseconds using Duration to avoid legacy Long overload warning.
+ */
+suspend fun delay(millis: Int) {
+    kotlinx.coroutines.delay(millis.toLong().milliseconds)
+}
+
+/**
+ * Shorthand for delay with Long milliseconds using Duration to avoid legacy Long overload warning.
+ */
+suspend fun delay(millis: Long) {
+    kotlinx.coroutines.delay(millis.milliseconds)
+}
+
+

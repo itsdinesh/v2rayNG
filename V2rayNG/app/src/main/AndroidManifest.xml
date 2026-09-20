@@ -10,10 +10,6 @@
         android:smallScreens="true"
         android:xlargeScreens="true" />
 
-    <uses-sdk
-        android:minSdkVersion="21"
-        tools:overrideLibrary="com.blacksquircle.ui.editorkit" />
-
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
@@ -30,19 +26,19 @@
     <!-- https://developer.android.com/about/versions/11/privacy/package-visibility -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
+        tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
+        tools:ignore="ForegroundServicesPolicy" />
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
         android:minSdkVersion="34" />
     <!-- <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /> -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
@@ -53,15 +49,22 @@
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
-        android:theme="@style/AppThemeDayNight"
-        android:usesCleartextTraffic="true"
-        tools:targetApi="m">
+        android:theme="@style/AppThemeDayNight.NoActionBar"
+        android:usesCleartextTraffic="true">
+
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
 
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.main.MainActivity"
             android:exported="true"
-            android:launchMode="singleTask"
-            android:theme="@style/AppThemeDayNight.NoActionBar">
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -77,53 +80,107 @@
                 android:resource="@xml/shortcuts" />
         </activity>
         <activity
-            android:name=".ui.ServerActivity"
+            android:name=".ui.server.ServerVmessActivity"
             android:exported="false"
-            android:windowSoftInputMode="stateUnchanged" />
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
         <activity
-            android:name=".ui.ServerCustomConfigActivity"
+            android:name=".ui.server.ServerVlessActivity"
             android:exported="false"
-            android:windowSoftInputMode="stateUnchanged" />
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
         <activity
-            android:name=".ui.SettingsActivity"
+            android:name=".ui.server.ServerShadowsocksActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.server.ServerSocksActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.server.ServerHttpActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.server.ServerTrojanActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.server.ServerWireguardActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.server.ServerHysteria2Activity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.server.ServerCustomConfigActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.server.ServerGroupActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.server.ServerProxyChainActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+        <activity
+            android:name=".ui.settings.SettingsActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.PerAppProxyActivity"
+            android:name=".ui.perappproxy.PerAppProxyActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.apppicker.AppPickerActivity"
             android:exported="false" />
         <activity
             android:name=".ui.ScannerActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.LogcatActivity"
+            android:name=".ui.logcat.LogcatActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.RoutingSettingActivity"
+            android:name=".ui.routing.RoutingSettingActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.RoutingEditActivity"
+            android:name=".ui.routing.RoutingEditActivity"
+            android:windowSoftInputMode="stateUnchanged|adjustResize"
             android:exported="false" />
         <activity
-            android:name=".ui.SubSettingActivity"
+            android:name=".ui.subscription.SubSettingActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.UserAssetActivity"
+            android:name=".ui.userasset.UserAssetActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.UserAssetUrlActivity"
+            android:name=".ui.userasset.UserAssetUrlActivity"
+            android:windowSoftInputMode="stateUnchanged|adjustResize"
             android:exported="false" />
 
         <activity
-            android:name=".ui.SubEditActivity"
+            android:name=".ui.subscription.SubEditActivity"
+            android:windowSoftInputMode="stateUnchanged|adjustResize"
             android:exported="false" />
         <activity
-            android:name=".ui.ScScannerActivity"
+            android:name=".ui.shortcut.ScScannerActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.ScSwitchActivity"
+            android:name=".ui.shortcut.ScSwitchActivity"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:process=":RunSoLibV2RayDaemon"
-            android:theme="@style/AppTheme.NoActionBar.Translucent" />
+            android:process=":daemon"
+            android:theme="@style/AppThemeDayNight.NoActionBar.Translucent" />
+        <activity
+            android:name=".ui.shortcut.ScStartActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:process=":daemon"
+            android:theme="@style/AppThemeDayNight.NoActionBar.Translucent" />
+        <activity
+            android:name=".ui.shortcut.ScStopActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:process=":daemon"
+            android:theme="@style/AppThemeDayNight.NoActionBar.Translucent" />
 
         <activity
             android:name=".ui.UrlSchemeActivity"
@@ -145,20 +202,27 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.CheckUpdateActivity"
+            android:name=".ui.checkupdate.CheckUpdateActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.backup.BackupActivity"
             android:exported="false" />
         <activity
             android:name=".ui.AboutActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.TranslatorsActivity"
+            android:exported="false" />
 
         <service
-            android:name=".service.V2RayVpnService"
+            android:name=".service.CoreVpnService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_VPN_SERVICE"
-            android:process=":RunSoLibV2RayDaemon">
+            android:process=":daemon"
+            tools:ignore="VpnServicePolicy">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
@@ -171,32 +235,58 @@
         </service>
 
         <service
-            android:name=".service.V2RayProxyOnlyService"
+            android:name=".service.CoreProxyOnlyService"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:label="@string/app_name"
-            android:process=":RunSoLibV2RayDaemon">
+            android:process=":daemon">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="proxy" />
         </service>
 
         <service
-            android:name=".service.V2RayTestService"
+            android:name=".service.CoreRootService"
             android:exported="false"
-            android:process=":RunSoLibV2RayDaemon" />
+            android:foregroundServiceType="specialUse"
+            android:label="@string/app_name"
+            android:process=":daemon">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="proxy" />
+        </service>
+
+        <service
+            android:name=".service.CoreTestService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:process=":tasks">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="test" />
+        </service>
+
+        <service
+            android:name=".service.SubscriptionUpdateService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:process=":tasks">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="test" />
+        </service>
 
         <receiver
             android:name=".receiver.WidgetProvider"
             android:exported="true"
-            android:process=":RunSoLibV2RayDaemon">
+            android:process=":daemon">
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/app_widget_provider" />
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.v2ray.ang.action.widget.click" />
-                <action android:name="com.v2ray.ang.action.activity" />
+                <action android:name="${applicationId}.action.widget.click" />
+                <action android:name="${applicationId}.action.activity" />
             </intent-filter>
         </receiver>
         <receiver
@@ -205,6 +295,8 @@
             android:label="BootReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
@@ -215,8 +307,7 @@
             android:icon="@drawable/ic_stat_name"
             android:label="@string/app_tile_name"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
-            android:process=":RunSoLibV2RayDaemon"
-            tools:targetApi="24">
+            android:process=":daemon">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
@@ -226,7 +317,7 @@
         </service>
         <!-- =====================Tasker===================== -->
         <activity
-            android:name=".ui.TaskerActivity"
+            android:name=".ui.shortcut.TaskerActivity"
             android:exported="true"
             android:icon="@mipmap/ic_launcher">
             <intent-filter>
@@ -237,7 +328,7 @@
         <receiver
             android:name=".receiver.TaskerReceiver"
             android:exported="true"
-            android:process=":RunSoLibV2RayDaemon"
+            android:process=":daemon"
             tools:ignore="ExportedReceiver">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.FIRE_SETTING" />
@@ -256,6 +347,11 @@
                 tools:node="remove" />
 
         </provider>
+
+        <service
+            android:name="androidx.work.multiprocess.RemoteWorkManagerService"
+            android:exported="false"
+            android:process=":bg" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

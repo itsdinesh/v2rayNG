@@ -1,27 +1,27 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     id("com.jaredsburrows.license")
 }
 
 android {
     namespace = "com.v2ray.ang"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.v2ray.ang"
-        minSdk = 21
-        targetSdk = 35
-        versionCode = 666
-        versionName = "1.10.16"
-        multiDexEnabled = true
+        minSdk = 24
+        targetSdk = 37
+        versionCode = 748
+        versionName = "2.3.8"
 
         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
         splits {
             abi {
                 isEnable = true
                 reset()
-                if (abiFilterList != null && abiFilterList.isNotEmpty()) {
+                if (!abiFilterList.isNullOrEmpty()) {
                     include(*abiFilterList.toTypedArray())
                 } else {
                     include(
@@ -67,14 +67,16 @@ android {
         }
     }
 
-
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     applicationVariants.all {
@@ -122,8 +124,23 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true
         buildConfig = true
+        compose = true
+    }
+
+    androidResources {
+        generateLocaleConfig = true
+        localeFilters += listOf(
+            "en",
+            "zh-rCN",
+            "zh-rTW",
+            "vi",
+            "ru",
+            "fa",
+            "ar",
+            "bn",
+            "bqi-rIR"
+        )
     }
 
     packaging {
@@ -141,45 +158,47 @@ dependencies {
     // AndroidX Core Libraries
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.preference.ktx)
-    implementation(libs.recyclerview)
-    implementation(libs.androidx.swiperefreshlayout)
 
-    // UI Libraries
-    implementation(libs.material)
-    implementation(libs.toasty)
-    implementation(libs.editorkit)
-    implementation(libs.flexbox)
+    // Compose Libraries
+    implementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.coil.compose)
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
 
     // Data and Storage Libraries
     implementation(libs.mmkv.static)
     implementation(libs.gson)
+    implementation(libs.okhttp)
 
     // Reactive and Utility Libraries
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.core)
 
-    // Language and Processing Libraries
-    implementation(libs.language.base)
-    implementation(libs.language.json)
-
-    // Intent and Utility Libraries
-    implementation(libs.quickie.foss)
-    implementation(libs.core)
+    // QR Code: CameraX + ZXing
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.compose)
+    implementation(libs.core) // zxing core
 
     // AndroidX Lifecycle and Architecture Components
     implementation(libs.lifecycle.viewmodel.ktx)
-    implementation(libs.lifecycle.livedata.ktx)
     implementation(libs.lifecycle.runtime.ktx)
 
     // Background Task Libraries
     implementation(libs.work.runtime.ktx)
     implementation(libs.work.multiprocess)
 
-    // Multidex Support
-    implementation(libs.multidex)
+    // Reorderable list
+    implementation(libs.reorderable)
 
     // Testing Libraries
     testImplementation(libs.junit)

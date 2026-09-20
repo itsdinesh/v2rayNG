@@ -2,7 +2,7 @@ package com.v2ray.ang.dto
 
 import com.google.gson.annotations.SerializedName
 import com.v2ray.ang.AppConfig
-import com.v2ray.ang.util.Utils
+import com.v2ray.ang.enums.EConfigType
 
 data class V2rayConfig(
     var remarks: String? = null,
@@ -31,23 +31,29 @@ data class V2rayConfig(
 
     data class InboundBean(
         var tag: String,
-        var port: Int,
+        var port: Int?,
         var protocol: String,
         var listen: String? = null,
-        val settings: Any? = null,
-        val sniffing: SniffingBean? = null,
+        var settings: InSettingsBean? = null,
+        var sniffing: SniffingBean? = null,
         val streamSettings: Any? = null,
         val allocate: Any? = null
     ) {
 
         data class InSettingsBean(
-            val auth: String? = null,
-            val udp: Boolean? = null,
-            val userLevel: Int? = null,
-            val address: String? = null,
-            val port: Int? = null,
-            val network: String? = null
-        )
+            var auth: String? = null,
+            var udp: Boolean? = null,
+            var userLevel: Int? = null,
+            var accounts: List<SocksAccountBean>? = null,
+            var name: String? = null,
+
+            var mtu: Int? = null
+        ) {
+            data class SocksAccountBean(
+                var user: String = "",
+                var pass: String = ""
+            )
+        }
 
         data class SniffingBean(
             var enabled: Boolean,
@@ -62,84 +68,38 @@ data class V2rayConfig(
         var protocol: String,
         var settings: OutSettingsBean? = null,
         var streamSettings: StreamSettingsBean? = null,
-        val proxySettings: Any? = null,
         val sendThrough: String? = null,
         var mux: MuxBean? = MuxBean(false)
     ) {
         data class OutSettingsBean(
-            var vnext: List<VnextBean>? = null,
-            var fragment: FragmentBean? = null,
-            var noises: List<NoiseBean>? = null,
-            var servers: List<ServersBean>? = null,
-            /*Blackhole*/
-            var response: Response? = null,
-            /*DNS*/
-            val network: String? = null,
+            /*Common */
             var address: Any? = null,
-            val port: Int? = null,
-            /*Freedom*/
-            var domainStrategy: String? = null,
-            val redirect: String? = null,
-            val userLevel: Int? = null,
-            /*Loopback*/
-            val inboundTag: String? = null,
+            var port: Int? = null,
+            var level: Int? = null,
+            var email: String? = null,
+            /*HTTP/SOCKS*/
+            var user: String? = null,
+            var pass: String? = null,
+            var headers: Map<String, String>? = null,
+            /*VMess/VLESS*/
+            var id: String? = null,
+            var security: String? = null,
+            var encryption: String? = null,
+            /*VLESS*/
+            var flow: String? = null,
+            /*Trojan/Shadowsocks*/
+            var password: String? = null,
+            /*Shadowsocks*/
+            var method: String? = null,
+            /*Hysteria/Hysteria2*/
+            var version: Int? = null,
             /*Wireguard*/
             var secretKey: String? = null,
             val peers: List<WireGuardBean>? = null,
             var reserved: List<Int>? = null,
             var mtu: Int? = null,
-            var obfsPassword: String? = null,
+            var domainStrategy: String? = null,
         ) {
-
-            data class VnextBean(
-                var address: String = "",
-                var port: Int = AppConfig.DEFAULT_PORT,
-                var users: List<UsersBean>
-            ) {
-
-                data class UsersBean(
-                    var id: String = "",
-                    var alterId: Int? = null,
-                    var security: String? = null,
-                    var level: Int = AppConfig.DEFAULT_LEVEL,
-                    var encryption: String? = null,
-                    var flow: String? = null
-                )
-            }
-
-            data class FragmentBean(
-                var packets: String? = null,
-                var length: String? = null,
-                var interval: String? = null
-            )
-
-            data class NoiseBean(
-                var type: String? = null,
-                var packet: String? = null,
-                var delay: String? = null
-            )
-
-            data class ServersBean(
-                var address: String = "",
-                var method: String? = null,
-                var ota: Boolean = false,
-                var password: String? = null,
-                var port: Int = AppConfig.DEFAULT_PORT,
-                var level: Int = AppConfig.DEFAULT_LEVEL,
-                val email: String? = null,
-                var flow: String? = null,
-                val ivCheck: Boolean? = null,
-                var users: List<SocksUsersBean>? = null
-            ) {
-                data class SocksUsersBean(
-                    var user: String = "",
-                    var pass: String = "",
-                    var level: Int = AppConfig.DEFAULT_LEVEL
-                )
-            }
-
-            data class Response(var type: String)
-
             data class WireGuardBean(
                 var publicKey: String = "",
                 var preSharedKey: String? = null,
@@ -148,7 +108,7 @@ data class V2rayConfig(
         }
 
         data class StreamSettingsBean(
-            var network: String = AppConfig.DEFAULT_NETWORK,
+            var network: String? = AppConfig.DEFAULT_NETWORK,
             var security: String? = null,
             var tcpSettings: TcpSettingsBean? = null,
             var kcpSettings: KcpSettingsBean? = null,
@@ -160,7 +120,8 @@ data class V2rayConfig(
             var quicSettings: QuicSettingBean? = null,
             var realitySettings: TlsSettingsBean? = null,
             var grpcSettings: GrpcSettingsBean? = null,
-            var hy2steriaSettings: Hy2steriaSettingsBean? = null,
+            var hysteriaSettings: HysteriaSettingsBean? = null,
+            var finalmask: Any? = null,
             val dsSettings: Any? = null,
             var sockopt: SockoptBean? = null
         ) {
@@ -187,7 +148,7 @@ data class V2rayConfig(
                             @SerializedName("Accept-Encoding")
                             val acceptEncoding: List<String>? = null,
                             val Connection: List<String>? = null,
-                            val Pragma: String? = null
+                            val Pragma: Any? = null
                         )
                     }
                 }
@@ -200,25 +161,17 @@ data class V2rayConfig(
                 var downlinkCapacity: Int = 100,
                 var congestion: Boolean = false,
                 var readBufferSize: Int = 1,
-                var writeBufferSize: Int = 1,
-                var header: HeaderBean = HeaderBean(),
-                var seed: String? = null
-            ) {
-                data class HeaderBean(
-                    var type: String = "none",
-                    var domain: String? = null
-                )
-            }
+                var writeBufferSize: Int = 1
+            )
 
             data class WsSettingsBean(
                 var path: String? = null,
-                var headers: HeadersBean = HeadersBean(),
+                var host: String? = null,
+                var headers: Map<String, String>? = null,
                 val maxEarlyData: Int? = null,
                 val useBrowserForwarding: Boolean? = null,
                 val acceptProxyProtocol: Boolean? = null
-            ) {
-                data class HeadersBean(var Host: String = "")
-            }
+            )
 
             data class HttpupgradeSettingsBean(
                 var path: String? = null,
@@ -245,7 +198,15 @@ data class V2rayConfig(
                 var tproxy: String? = null,
                 var mark: Int? = null,
                 var dialerProxy: String? = null,
-                var domainStrategy: String? = null
+                var domainStrategy: String? = null,
+                var happyEyeballs: HappyEyeballsBean? = null,
+            )
+
+            data class HappyEyeballsBean(
+                var prioritizeIPv6: Boolean? = null,
+                var maxConcurrentTry: Int? = 4,
+                var tryDelayMs: Int? = 250, // ms
+                var interleave: Int? = null,
             )
 
             data class TlsSettingsBean(
@@ -260,8 +221,10 @@ data class V2rayConfig(
                 val certificates: List<Any>? = null,
                 val disableSystemRoot: Boolean? = null,
                 val enableSessionResumption: Boolean? = null,
+                var echConfigList: String? = null,
+                var verifyPeerCertByName: String? = null,
+                var pinnedPeerCertSha256: String? = null,
                 // REALITY settings
-                val show: Boolean = false,
                 var publicKey: String? = null,
                 var shortId: String? = null,
                 var spiderX: String? = null,
@@ -284,18 +247,57 @@ data class V2rayConfig(
                 var health_check_timeout: Int? = null
             )
 
-            data class Hy2steriaSettingsBean(
-                var password: String? = null,
-                var use_udp_extension: Boolean? = true,
-                var congestion: Hy2CongestionBean? = null
-            ) {
-                data class Hy2CongestionBean(
-                    var type: String? = "bbr",
-                    var up_mbps: Int? = null,
-                    var down_mbps: Int? = null,
-                )
-            }
+            data class HysteriaSettingsBean(
+                var version: Int,
+                var auth: String? = null
+            )
 
+            //https://xtls.github.io/config/transport.html#finalmaskobject
+            data class FinalMaskBean(
+                var tcp: List<MaskBean>? = null,
+                var udp: List<MaskBean>? = null,
+                var quicParams: QuicParamsBean? = null
+            ) {
+                data class MaskBean(
+                    var type: String,
+                    var settings: MaskSettingsBean? = null
+                ) {
+                    data class MaskSettingsBean(
+                        val password: String? = null,
+                        val header: String? = null,
+                        val value: String? = null,
+                        // fragment
+                        val packets: String? = null,
+                        val length: String? = null,
+                        val delay: String? = null,
+                        val maxSplit: String? = null,
+                        // noise
+                        val reset: Int? = null,
+                        val noise: List<NoiseMaskBean>? = null
+                    ) {
+                        data class NoiseMaskBean(
+                            val rand: String? = null,
+                            // val randRange: String? = null,
+                            // val type: String? = null,
+                            // val packet: String? = null,
+                            val delay: String? = null,
+                        )
+                    }
+                }
+
+                data class QuicParamsBean(
+                    var congestion: String? = null,
+                    var brutalUp: String? = null,
+                    var brutalDown: String? = null,
+                    var udpHop: UdpHopBean? = null,
+                ) {
+                    // Nested data class for the udpHop JSON object
+                    data class UdpHopBean(
+                        var ports: String? = null,
+                        var interval: String? = null
+                    )
+                }
+            }
         }
 
         data class MuxBean(
@@ -306,168 +308,27 @@ data class V2rayConfig(
         )
 
         fun getServerAddress(): String? {
-            if (protocol.equals(EConfigType.VMESS.name, true)
-                || protocol.equals(EConfigType.VLESS.name, true)
-            ) {
-                return settings?.vnext?.first()?.address
-            } else if (protocol.equals(EConfigType.SHADOWSOCKS.name, true)
-                || protocol.equals(EConfigType.SOCKS.name, true)
-                || protocol.equals(EConfigType.HTTP.name, true)
-                || protocol.equals(EConfigType.TROJAN.name, true)
-                || protocol.equals(EConfigType.HYSTERIA2.name, true)
-            ) {
-                return settings?.servers?.first()?.address
-            } else if (protocol.equals(EConfigType.WIREGUARD.name, true)) {
-                return settings?.peers?.first()?.endpoint?.substringBeforeLast(":")
+            return if (protocol.equals(EConfigType.WIREGUARD.name, true)) {
+                settings?.peers?.firstOrNull()?.endpoint?.substringBeforeLast(":")
+            } else {
+                settings?.address as? String
             }
-            return null
         }
 
         fun getServerPort(): Int? {
-            if (protocol.equals(EConfigType.VMESS.name, true)
-                || protocol.equals(EConfigType.VLESS.name, true)
-            ) {
-                return settings?.vnext?.first()?.port
-            } else if (protocol.equals(EConfigType.SHADOWSOCKS.name, true)
-                || protocol.equals(EConfigType.SOCKS.name, true)
-                || protocol.equals(EConfigType.HTTP.name, true)
-                || protocol.equals(EConfigType.TROJAN.name, true)
-                || protocol.equals(EConfigType.HYSTERIA2.name, true)
-            ) {
-                return settings?.servers?.first()?.port
-            } else if (protocol.equals(EConfigType.WIREGUARD.name, true)) {
-                return settings?.peers?.first()?.endpoint?.substringAfterLast(":")?.toInt()
-            }
-            return null
-        }
-
-        fun getServerAddressAndPort(): String {
-            val address = getServerAddress().orEmpty()
-            val port = getServerPort()
-            return Utils.getIpv6Address(address) + ":" + port
-        }
-
-        fun getPassword(): String? {
-            if (protocol.equals(EConfigType.VMESS.name, true)
-                || protocol.equals(EConfigType.VLESS.name, true)
-            ) {
-                return settings?.vnext?.first()?.users?.first()?.id
-            } else if (protocol.equals(EConfigType.SHADOWSOCKS.name, true)
-                || protocol.equals(EConfigType.TROJAN.name, true)
-                || protocol.equals(EConfigType.HYSTERIA2.name, true)
-            ) {
-                return settings?.servers?.first()?.password
-            } else if (protocol.equals(EConfigType.SOCKS.name, true)
-                || protocol.equals(EConfigType.HTTP.name, true)
-            ) {
-                return settings?.servers?.first()?.users?.first()?.pass
-            } else if (protocol.equals(EConfigType.WIREGUARD.name, true)) {
-                return settings?.secretKey
-            }
-            return null
-        }
-
-        fun getSecurityEncryption(): String? {
-            return when {
-                protocol.equals(EConfigType.VMESS.name, true) -> settings?.vnext?.first()?.users?.first()?.security
-                protocol.equals(EConfigType.VLESS.name, true) -> settings?.vnext?.first()?.users?.first()?.encryption
-                protocol.equals(EConfigType.SHADOWSOCKS.name, true) -> settings?.servers?.first()?.method
-                else -> null
+            return if (protocol.equals(EConfigType.WIREGUARD.name, true)) {
+                settings?.peers?.firstOrNull()?.endpoint?.substringAfterLast(":")?.toIntOrNull()
+            } else {
+                settings?.port
             }
         }
 
-        fun getTransportSettingDetails(): List<String?>? {
-            if (protocol.equals(EConfigType.VMESS.name, true)
-                || protocol.equals(EConfigType.VLESS.name, true)
-                || protocol.equals(EConfigType.TROJAN.name, true)
-                || protocol.equals(EConfigType.SHADOWSOCKS.name, true)
-            ) {
-                val transport = streamSettings?.network ?: return null
-                return when (transport) {
-                    NetworkType.TCP.type -> {
-                        val tcpSetting = streamSettings?.tcpSettings ?: return null
-                        listOf(
-                            tcpSetting.header.type,
-                            tcpSetting.header.request?.headers?.Host?.joinToString(",").orEmpty(),
-                            tcpSetting.header.request?.path?.joinToString(",").orEmpty()
-                        )
-                    }
-
-                    NetworkType.KCP.type -> {
-                        val kcpSetting = streamSettings?.kcpSettings ?: return null
-                        listOf(
-                            kcpSetting.header.type,
-                            "",
-                            kcpSetting.seed.orEmpty()
-                        )
-                    }
-
-                    NetworkType.WS.type -> {
-                        val wsSetting = streamSettings?.wsSettings ?: return null
-                        listOf(
-                            "",
-                            wsSetting.headers.Host,
-                            wsSetting.path
-                        )
-                    }
-
-                    NetworkType.HTTP_UPGRADE.type -> {
-                        val httpupgradeSetting = streamSettings?.httpupgradeSettings ?: return null
-                        listOf(
-                            "",
-                            httpupgradeSetting.host,
-                            httpupgradeSetting.path
-                        )
-                    }
-
-                    NetworkType.XHTTP.type -> {
-                        val xhttpSettings = streamSettings?.xhttpSettings ?: return null
-                        listOf(
-                            "",
-                            xhttpSettings.host,
-                            xhttpSettings.path
-                        )
-                    }
-
-                    NetworkType.H2.type -> {
-                        val h2Setting = streamSettings?.httpSettings ?: return null
-                        listOf(
-                            "",
-                            h2Setting.host.joinToString(","),
-                            h2Setting.path
-                        )
-                    }
-
-//                    "quic" -> {
-//                        val quicSetting = streamSettings?.quicSettings ?: return null
-//                        listOf(
-//                            quicSetting.header.type,
-//                            quicSetting.security,
-//                            quicSetting.key
-//                        )
-//                    }
-
-                    NetworkType.GRPC.type -> {
-                        val grpcSetting = streamSettings?.grpcSettings ?: return null
-                        listOf(
-                            if (grpcSetting.multiMode == true) "multi" else "gun",
-                            grpcSetting.authority.orEmpty(),
-                            grpcSetting.serviceName
-                        )
-                    }
-
-                    else -> null
-                }
-            }
-            return null
-        }
-
-        fun ensureSockopt(): V2rayConfig.OutboundBean.StreamSettingsBean.SockoptBean {
-            val stream = streamSettings ?: V2rayConfig.OutboundBean.StreamSettingsBean().also {
+        fun ensureSockopt(): StreamSettingsBean.SockoptBean {
+            val stream = streamSettings ?: StreamSettingsBean().also {
                 streamSettings = it
             }
 
-            val sockopt = stream.sockopt ?: V2rayConfig.OutboundBean.StreamSettingsBean.SockoptBean().also {
+            val sockopt = stream.sockopt ?: StreamSettingsBean.SockoptBean().also {
                 stream.sockopt = it
             }
 
@@ -481,6 +342,7 @@ data class V2rayConfig(
         val clientIp: String? = null,
         val disableCache: Boolean? = null,
         val queryStrategy: String? = null,
+        val enableParallelQuery: Boolean? = null,
         val tag: String? = null
     ) {
         data class ServersBean(
@@ -490,6 +352,7 @@ data class V2rayConfig(
             var expectIPs: List<String>? = null,
             val clientIp: String? = null,
             val skipFallback: Boolean? = null,
+            val tag: String? = null,
         )
     }
 
@@ -502,8 +365,9 @@ data class V2rayConfig(
 
         data class RulesBean(
             var type: String = "field",
-            var ip: ArrayList<String>? = null,
-            var domain: ArrayList<String>? = null,
+            var ip: List<String>? = null,
+            var domain: List<String>? = null,
+            var process: List<String>? = null,
             var outboundTag: String? = null,
             var balancerTag: String? = null,
             var port: String? = null,
@@ -573,6 +437,7 @@ data class V2rayConfig(
         data class PingConfigObject(
             val destination: String,
             val connectivity: String? = null,
+            val httpMethod: String? = null,
             val interval: String,
             val sampling: Int,
             val timeout: String? = null

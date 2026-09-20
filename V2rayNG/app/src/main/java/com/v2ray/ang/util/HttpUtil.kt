@@ -1,19 +1,23 @@
 package com.v2ray.ang.util
 
-import android.util.Log
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.AppConfig.LOOPBACK
 import com.v2ray.ang.BuildConfig
-import com.v2ray.ang.util.Utils.encode
-import com.v2ray.ang.util.Utils.urlDecode
+import com.v2ray.ang.dto.UrlContentRequest
+import okhttp3.Credentials
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
 import java.io.IOException
-import java.net.HttpURLConnection
 import java.net.IDN
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.MalformedURLException
 import java.net.Proxy
+import java.net.URI
 import java.net.URL
+import java.util.concurrent.TimeUnit
 
 object HttpUtil {
 
@@ -87,11 +91,11 @@ object HttpUtil {
 
             val ipList = sortedAddresses.mapNotNull { it.hostAddress }
 
-            Log.i(AppConfig.TAG, "Resolved IPs for $host: ${ipList.joinToString()}")
+            LogUtil.i(AppConfig.TAG, "Resolved IPs for $host: ${ipList.joinToString()}")
 
             return ipList
         } catch (e: Exception) {
-            Log.e(AppConfig.TAG, "Failed to resolve host to IP", e)
+            LogUtil.e(AppConfig.TAG, "Failed to resolve host to IP", e)
             return null
         }
     }
@@ -105,13 +109,26 @@ object HttpUtil {
      * @param httpPort The HTTP port to use.
      * @return The content of the URL as a string.
      */
-    fun getUrlContent(url: String, timeout: Int, httpPort: Int = 0): String? {
-        val conn = createProxyConnection(url, httpPort, timeout, timeout) ?: return null
+    fun getUrlContent(request: UrlContentRequest): String? {
+        val url = request.url ?: return null
+        val client = buildOkHttpClient(request.timeout, request.httpPort, request.proxyUsername, request.proxyPassword, followRedirects = true)
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .get()
+            .header("Connection", "close")
+        if (request.httpPort != 0 && !request.proxyUsername.isNullOrBlank() && !request.proxyPassword.isNullOrBlank()) {
+            requestBuilder.header("Proxy-Authorization", Credentials.basic(request.proxyUsername, request.proxyPassword))
+        }
         try {
-            return conn.inputStream.bufferedReader().readText()
-        } catch (_: Exception) {
-        } finally {
-            conn.disconnect()
+            client.newCall(requestBuilder.build()).execute().use { response ->
+                if (!response.isSuccessful) {
+                    LogUtil.w(AppConfig.TAG, "Failed to get URL content, code=${response.code}")
+                    return null
+                }
+                return response.body?.string()
+            }
+        } catch (e: Exception) {
+            LogUtil.e(AppConfig.TAG, "Failed to get URL content", e)
         }
         return null
     }
@@ -126,98 +143,163 @@ object HttpUtil {
      * @throws IOException If an I/O error occurs.
      */
     @Throws(IOException::class)
-    fun getUrlContentWithUserAgent(url: String?, timeout: Int = 15000, httpPort: Int = 0): String {
-        var currentUrl = url
+    fun getUrlContentWithUserAgent(request: UrlContentRequest): String {
+        var currentUrl = request.url
         var redirects = 0
         val maxRedirects = 3
 
         while (redirects++ < maxRedirects) {
             if (currentUrl == null) continue
-            val conn = createProxyConnection(currentUrl, httpPort, timeout, timeout) ?: continue
-            conn.setRequestProperty("User-agent", "v2rayNG/${BuildConfig.VERSION_NAME}")
-            conn.connect()
+            val client = buildOkHttpClient(request.timeout, request.httpPort, request.proxyUsername, request.proxyPassword, followRedirects = false)
+            val finalUserAgent = if (request.userAgent.isNullOrBlank()) {
+                "v2rayNG/${BuildConfig.VERSION_NAME}"
+            } else {
+                request.userAgent
+            }
+            val requestBuilder = Request.Builder()
+                .url(currentUrl)
+                .get()
+                .header("User-agent", finalUserAgent)
+                .header("Connection", "close")
 
-            val responseCode = conn.responseCode
-            when (responseCode) {
-                in 300..399 -> {
-                    val location = conn.getHeaderField("Location")
-                    conn.disconnect()
-                    if (location.isNullOrEmpty()) {
-                        throw IOException("Redirect location not found")
-                    }
-                    currentUrl = location
-                    continue
+            applyEmbeddedBasicAuthHeader(currentUrl, requestBuilder)
+
+
+            val headersMap = JsonUtil.parseHeadersToMap(request.requestHeaders)
+            for ((key, value) in headersMap) {
+                LogUtil.d(AppConfig.TAG, "Adding custom header: $key = $value")
+                try {
+                    requestBuilder.header(key, value)
+                } catch (_: IllegalArgumentException) {
                 }
+            }
 
-                else -> try {
-                    return conn.inputStream.use { it.bufferedReader().readText() }
-                } finally {
-                    conn.disconnect()
+            if (request.httpPort != 0 && !request.proxyUsername.isNullOrBlank() && !request.proxyPassword.isNullOrBlank()) {
+                requestBuilder.header("Proxy-Authorization", Credentials.basic(request.proxyUsername, request.proxyPassword))
+            }
+
+            client.newCall(requestBuilder.build()).execute().use { response ->
+                when {
+                    response.isRedirect -> {
+                        val location = response.header("Location")
+                        if (location.isNullOrEmpty()) {
+                            throw IOException("Redirect location not found")
+                        }
+                        currentUrl = resolveLocation(currentUrl, location)
+                        if (currentUrl.isNullOrEmpty()) {
+                            throw IOException("Failed to resolve redirect location")
+                        }
+                        continue
+                    }
+
+                    response.isSuccessful -> {
+                        return response.body?.string() ?: ""
+                    }
+
+                    else -> {
+                        throw IOException("Request failed with status code ${response.code}")
+                    }
                 }
             }
         }
         throw IOException("Too many redirects")
     }
 
-    /**
-     * Creates an HttpURLConnection object connected through a proxy.
-     *
-     * @param urlStr The target URL address.
-     * @param port The port of the proxy server.
-     * @param connectTimeout The connection timeout in milliseconds (default is 15000 ms).
-     * @param readTimeout The read timeout in milliseconds (default is 15000 ms).
-     * @param needStream Whether the connection needs to support streaming.
-     * @return Returns a configured HttpURLConnection object, or null if it fails.
-     */
-    fun createProxyConnection(
-        urlStr: String,
-        port: Int,
-        connectTimeout: Int = 15000,
-        readTimeout: Int = 15000,
-        needStream: Boolean = false
-    ): HttpURLConnection? {
+    private fun applyEmbeddedBasicAuthHeader(rawUrl: String, requestBuilder: Request.Builder) {
+        val parsed = runCatching { URL(rawUrl) }.getOrNull() ?: return
+        parsed.userInfo?.let { userInfo ->
+            val colon = userInfo.indexOf(':')
+            val user = runCatching {
+                Utils.decodeURIComponent(if (colon >= 0) userInfo.substring(0, colon) else userInfo)
+            }.getOrDefault(if (colon >= 0) userInfo.substring(0, colon) else userInfo)
+            val pass = runCatching {
+                Utils.decodeURIComponent(if (colon >= 0) userInfo.substring(colon + 1) else "")
+            }.getOrDefault(if (colon >= 0) userInfo.substring(colon + 1) else "")
+            requestBuilder.header("Authorization", Credentials.basic(user, pass))
+        }
+    }
 
-        var conn: HttpURLConnection? = null
-        try {
-            val url = URL(urlStr)
-            // Create a connection
-            conn = if (port == 0) {
-                url.openConnection()
-            } else {
-                url.openConnection(
-                    Proxy(
-                        Proxy.Type.HTTP,
-                        InetSocketAddress(LOOPBACK, port)
-                    )
-                )
-            } as HttpURLConnection
+    private fun buildOkHttpClient(
+        timeout: Int,
+        httpPort: Int,
+        proxyUsername: String?,
+        proxyPassword: String?,
+        followRedirects: Boolean
+    ): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+            .connectTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+            .readTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+            .followRedirects(followRedirects)
+            .followSslRedirects(followRedirects)
 
-            // Set connection and read timeouts
-            conn.connectTimeout = connectTimeout
-            conn.readTimeout = readTimeout
-            if (!needStream) {
-                // Set request headers
-                conn.setRequestProperty("Connection", "close")
-                // Disable automatic redirects
-                conn.instanceFollowRedirects = false
-                // Disable caching
-                conn.useCaches = false
+        if (httpPort != 0) {
+            builder.proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(LOOPBACK, httpPort)))
+            if (!proxyUsername.isNullOrBlank() && !proxyPassword.isNullOrBlank()) {
+                builder.proxyAuthenticator { _, response ->
+                    if (response.request.header("Proxy-Authorization") != null) {
+                        null
+                    } else {
+                        response.request.newBuilder()
+                            .header("Proxy-Authorization", Credentials.basic(proxyUsername, proxyPassword))
+                            .build()
+                    }
+                }
             }
+        }
 
-            //Add Basic Authorization
-            url.userInfo?.let {
-                conn.setRequestProperty(
-                    "Authorization",
-                    "Basic ${encode(urlDecode(it))}"
-                )
+        return builder.build()
+    }
+
+    private fun resolveLocation(baseUrl: String, raw: String): String? {
+        return try {
+            val locUri = URI(raw)
+            val baseUri = URI(baseUrl)
+            val resolved = if (locUri.isAbsolute) locUri else baseUri.resolve(locUri)
+            resolved.toURL().toString()
+        } catch (_: Exception) {
+            try {
+                URL(raw).toString()
+            } catch (_: MalformedURLException) {
+                try {
+                    URL(URL(baseUrl), raw).toString()
+                } catch (_: MalformedURLException) {
+                    null
+                }
+            }
+        }
+    }
+
+    fun downloadToFile(
+        request: UrlContentRequest,
+        targetFile: File
+    ): Boolean {
+        val url = request.url ?: return false
+        val client = buildOkHttpClient(request.timeout, request.httpPort, request.proxyUsername, request.proxyPassword, followRedirects = true)
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .get()
+            .header("Connection", "close")
+        if (request.httpPort != 0 && !request.proxyUsername.isNullOrBlank() && !request.proxyPassword.isNullOrBlank()) {
+            requestBuilder.header("Proxy-Authorization", Credentials.basic(request.proxyUsername, request.proxyPassword))
+        }
+
+        return try {
+            client.newCall(requestBuilder.build()).execute().use { response ->
+                if (!response.isSuccessful) {
+                    LogUtil.w(AppConfig.TAG, "Failed to download file, code=${response.code}, url=$url")
+                    return false
+                }
+                val body = response.body ?: return false
+                body.byteStream().use { input ->
+                    targetFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                true
             }
         } catch (e: Exception) {
-            Log.e(AppConfig.TAG, "Failed to create proxy connection", e)
-            // If an exception occurs, close the connection and return null
-            conn?.disconnect()
-            return null
+            LogUtil.e(AppConfig.TAG, "Failed to download file: $url", e)
+            false
         }
-        return conn
     }
 }
-
