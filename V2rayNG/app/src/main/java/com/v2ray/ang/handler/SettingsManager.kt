@@ -16,6 +16,7 @@ import com.v2ray.ang.dto.entities.ProfileItem
 import com.v2ray.ang.dto.entities.RulesetItem
 import com.v2ray.ang.dto.entities.SubscriptionItem
 import com.v2ray.ang.enums.EConfigType
+import com.v2ray.ang.enums.PerAppProxyMode
 import com.v2ray.ang.enums.RoutingType
 import com.v2ray.ang.enums.VpnInterfaceAddressConfig
 import com.v2ray.ang.extension.moveItem
@@ -411,7 +412,102 @@ object SettingsManager {
      * @return True if HEV TUN is used, false otherwise.
      */
     fun isUsingHevTun(): Boolean {
+        if (isPerAppRoutingActive() && getPerAppBlockApps().isNotEmpty()) {
+            return false
+        }
         return MmkvManager.decodeSettingsBool(AppConfig.PREF_USE_HEV_TUNNEL, true)
+    }
+
+    /**
+     * Check if per-app proxy routing is enabled.
+     */
+    fun isPerAppRoutingActive(): Boolean {
+        return MmkvManager.decodeSettingsBool(AppConfig.PREF_PER_APP_PROXY, false)
+    }
+
+    /**
+     * Get the set of apps configured to connect directly (bypass proxy).
+     */
+    fun getPerAppDirectApps(): Set<String> {
+        val directSet = MmkvManager.decodeSettingsStringSet(AppConfig.PREF_PER_APP_DIRECT_SET)
+        if (directSet != null) {
+            return directSet.toSet()
+        }
+        // Migration from legacy bypass mode
+        val bypass = MmkvManager.decodeSettingsBool(AppConfig.PREF_BYPASS_APPS, false)
+        val mode = MmkvManager.decodeSettingsString(AppConfig.PREF_PER_APP_MODE)
+        if (bypass && mode != "block") {
+            return MmkvManager.decodeSettingsStringSet(AppConfig.PREF_PER_APP_PROXY_SET)?.toSet() ?: emptySet()
+        }
+        return emptySet()
+    }
+
+    /**
+     * Get the set of apps configured to be blocked (0 network connection).
+     */
+    fun getPerAppBlockApps(): Set<String> {
+        val blockSet = MmkvManager.decodeSettingsStringSet(AppConfig.PREF_PER_APP_BLOCK_SET)
+        if (blockSet != null) {
+            return blockSet.toSet()
+        }
+        // Migration from legacy block mode
+        val mode = MmkvManager.decodeSettingsString(AppConfig.PREF_PER_APP_MODE)
+        if (mode == "block") {
+            return MmkvManager.decodeSettingsStringSet(AppConfig.PREF_PER_APP_PROXY_SET)?.toSet() ?: emptySet()
+        }
+        return emptySet()
+    }
+
+    /**
+     * Set the direct and blocked app sets, keeping legacy preferences synchronized.
+     */
+    fun setPerAppRoutingSets(directApps: Set<String>, blockApps: Set<String>) {
+        MmkvManager.encodeSettings(AppConfig.PREF_PER_APP_DIRECT_SET, directApps.toMutableSet())
+        MmkvManager.encodeSettings(AppConfig.PREF_PER_APP_BLOCK_SET, blockApps.toMutableSet())
+        // Legacy sync: union of customized apps saved to PREF_PER_APP_PROXY_SET
+        val allCustomized = (directApps + blockApps).toMutableSet()
+        MmkvManager.encodeSettings(AppConfig.PREF_PER_APP_PROXY_SET, allCustomized)
+        MmkvManager.encodeSettings(AppConfig.PREF_BYPASS_APPS, true)
+        val legacyMode = if (blockApps.isNotEmpty()) {
+            "block"
+        } else if (directApps.isNotEmpty()) {
+            "bypass"
+        } else {
+            "proxy"
+        }
+        MmkvManager.encodeSettings(AppConfig.PREF_PER_APP_MODE, legacyMode)
+    }
+
+    /**
+     * Get the configured per-app proxy mode (legacy compat).
+     */
+    fun getPerAppProxyMode(): PerAppProxyMode {
+        if (getPerAppBlockApps().isNotEmpty()) return PerAppProxyMode.BLOCK
+        if (getPerAppDirectApps().isNotEmpty()) return PerAppProxyMode.BYPASS
+        val modeStr = MmkvManager.decodeSettingsString(AppConfig.PREF_PER_APP_MODE)
+        if (!modeStr.isNullOrEmpty()) {
+            return PerAppProxyMode.fromValue(modeStr)
+        }
+        val bypass = MmkvManager.decodeSettingsBool(AppConfig.PREF_BYPASS_APPS, false)
+        return if (bypass) PerAppProxyMode.BYPASS else PerAppProxyMode.PROXY
+    }
+
+    /**
+     * Set the per-app proxy mode and keep legacy preference synchronized.
+     */
+    fun setPerAppProxyMode(mode: PerAppProxyMode) {
+        MmkvManager.encodeSettings(AppConfig.PREF_PER_APP_MODE, mode.value)
+        MmkvManager.encodeSettings(AppConfig.PREF_BYPASS_APPS, mode == PerAppProxyMode.BYPASS)
+    }
+
+    /**
+     * Check if per-app block mode is currently active with selected apps.
+     */
+    fun isPerAppBlockMode(): Boolean {
+        if (!isPerAppRoutingActive()) {
+            return false
+        }
+        return getPerAppBlockApps().isNotEmpty()
     }
 
     /**

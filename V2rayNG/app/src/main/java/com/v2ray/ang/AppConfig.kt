@@ -24,7 +24,10 @@ object AppConfig {
     const val PREF_ROUTE_ONLY_ENABLED = "pref_route_only_enabled"
     const val PREF_PER_APP_PROXY = "pref_per_app_proxy"
     const val PREF_PER_APP_PROXY_SET = "pref_per_app_proxy_set"
+    const val PREF_PER_APP_DIRECT_SET = "pref_per_app_direct_set"
+    const val PREF_PER_APP_BLOCK_SET = "pref_per_app_block_set"
     const val PREF_BYPASS_APPS = "pref_bypass_apps"
+    const val PREF_PER_APP_MODE = "pref_per_app_mode"
     const val PREF_LOCAL_DNS_ENABLED = "pref_local_dns_enabled"
     const val PREF_FAKE_DNS_ENABLED = "pref_fake_dns_enabled"
     const val PREF_APPEND_HTTP_PROXY = "pref_append_http_proxy"
@@ -243,6 +246,8 @@ object AppConfig {
     const val ROOT_V6_CHAIN = "CORE6_FILTER"       // ip6tables filter/OUTPUT chain: blackhole native IPv6 when it isn't tunneled
     const val ROOT_V6_FWD_CHAIN = "CORE6_FWD" // ip6tables FORWARD chain: route or reject tethered clients' native IPv6
     const val ROOT_V6_PRE_CHAIN = "CORE6_PRE" // ip6tables mangle/PREROUTING chain: mark forwarded clients' IPv6 into the tun
+    const val ROOT_BLOCK_CHAIN = "CORE_BLOCK" // iptables filter/OUTPUT chain: block selected apps completely
+    const val ROOT_V6_BLOCK_CHAIN = "CORE6_BLOCK" // ip6tables filter/OUTPUT chain: block selected apps completely (v6)
     const val ROOT_LAN_DNS = "1.1.1.1"          // fallback resolver for tethered clients when no plain-IPv4 DNS is configured
     const val ROOT_OOM_SCORE = "-1000"          // oom_score_adj that makes the LMK never kill us
 

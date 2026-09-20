@@ -163,6 +163,18 @@
     <string name="menu_item_import_proxy_app">Import from Clipboard</string>
     <string name="per_app_proxy_settings">Per-app settings</string>
     <string name="per_app_proxy_settings_enable">Enable per-app</string>
+    <string name="per_app_proxy_mode_proxy">Proxy</string>
+    <string name="per_app_proxy_mode_bypass">Bypass</string>
+    <string name="per_app_proxy_mode_direct">Direct</string>
+    <string name="per_app_proxy_mode_block">Block</string>
+    <string name="per_app_proxy_filter_all">All</string>
+    <string name="menu_item_set_all_proxy">Set all to Proxy</string>
+    <string name="menu_item_set_all_direct">Set all to Direct</string>
+    <string name="menu_item_set_all_block">Set all to Block</string>
+    <string name="menu_item_reset_all">Reset all to Default</string>
+    <string name="per_app_proxy_mode_proxy_summary">Selected apps use proxy, unselected connect directly</string>
+    <string name="per_app_proxy_mode_bypass_summary">Selected apps connect directly, unselected use proxy</string>
+    <string name="per_app_proxy_mode_block_summary">Selected apps are blocked from network, unselected use proxy</string>
     <string name="app_picker_unknown_app">Unknown app (UID not recognized)</string>
 
     <!-- Preferences -->
@@ -171,7 +183,7 @@
     <string name="title_core_settings">Core Settings</string>
     <string name="title_vpn_settings">VPN Settings</string>
     <string name="title_pref_per_app_proxy">Per-app proxy</string>
-    <string name="summary_pref_per_app_proxy">General: checked apps use the proxy, and unchecked apps connect directly;\nBypass mode: checked apps connect directly, and unchecked apps use the proxy.\nThe option to automatically select apps that should use the proxy is in the menu.</string>
+    <string name="summary_pref_per_app_proxy">Default is Proxy. You can assign each app individually:\nProxy: route traffic through proxy;\nDirect: connect directly, bypassing proxy;\nBlock: completely cut off from network access.</string>
     <string name="title_pref_is_booted">Connect after device boot</string>
     <string name="summary_pref_is_booted">Automatically connect to the selected server after the device starts. Android may restrict background starts.</string>
     <string name="title_system_vpn_settings">System VPN settings</string>

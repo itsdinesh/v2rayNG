@@ -1163,6 +1163,22 @@ object CoreConfigManager {
         rulesetItems?.forEach { key ->
             appendRoutingUserRule(configContext, key, v2rayConfig, policyGroupBalancerTags)
         }
+
+        if (SettingsManager.isPerAppRoutingActive()) {
+            val blockedPackages = SettingsManager.getPerAppBlockApps().toList()
+            if (blockedPackages.isNotEmpty()) {
+                val uids = PackageUidResolver.packageNamesToUids(configContext.context, blockedPackages)
+                if (uids.isNotEmpty()) {
+                    v2rayConfig.routing.rules.add(
+                        0,
+                        V2rayConfig.RoutingBean.RulesBean(
+                            outboundTag = AppConfig.TAG_BLOCKED,
+                            process = ArrayList(uids)
+                        )
+                    )
+                }
+            }
+        }
     }
 
     /**

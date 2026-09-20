@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Process
 import android.util.AtomicFile
 import com.v2ray.ang.AppConfig
+import com.v2ray.ang.enums.PerAppProxyMode
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.handler.SettingsManager
 import com.v2ray.ang.root.RootProxyManager.TABLE
@@ -132,15 +133,16 @@ object RootProxyManager {
         }
         val cfgPath = cfgFile.absolutePath
 
-        // Per-app proxy/bypass (mirrors what VpnService does via allowed/disallowed apps).
-        val perAppEnabled = MmkvManager.decodeSettingsBool(AppConfig.PREF_PER_APP_PROXY)
-        val bypassApps = MmkvManager.decodeSettingsBool(AppConfig.PREF_BYPASS_APPS)
-        val selectedUids = if (perAppEnabled) {
-            val pkgs = MmkvManager.decodeSettingsStringSet(AppConfig.PREF_PER_APP_PROXY_SET)?.toList().orEmpty()
-            if (pkgs.isNotEmpty()) PackageUidResolver.packageNamesToUids(context, pkgs) else emptyList()
-        } else {
-            emptyList()
-        }
+        // Per-app proxy/bypass/block (mirrors what VpnService does via allowed/disallowed apps).
+        val perAppEnabled = SettingsManager.isPerAppRoutingActive()
+        val directUids = if (perAppEnabled) {
+            val directPkgs = SettingsManager.getPerAppDirectApps().toList()
+            if (directPkgs.isNotEmpty()) PackageUidResolver.packageNamesToUids(context, directPkgs) else emptyList()
+        } else emptyList()
+        val blockUids = if (perAppEnabled) {
+            val blockPkgs = SettingsManager.getPerAppBlockApps().toList()
+            if (blockPkgs.isNotEmpty()) PackageUidResolver.packageNamesToUids(context, blockPkgs) else emptyList()
+        } else emptyList()
 
         return buildString {
             appendLine("set -e")
@@ -171,7 +173,7 @@ object RootProxyManager {
             appendLine("ip rule add fwmark $MARK table $TABLE priority $PRIORITY")
             // mark the device's own packets into the tun (Root mode only)
             if (captureDeviceTraffic) {
-                append(buildMangleMarking("iptables", appUid, perAppEnabled, bypassApps, selectedUids))
+                append(buildMangleMarking("iptables", appUid, perAppEnabled, directUids))
             }
             // optionally route hotspot / USB-tethered clients through the tun too
             if (lanShare) {
@@ -185,11 +187,14 @@ object RootProxyManager {
                     appendLine("ip -6 addr add ${AppConfig.ROOT_TUN_ADDR_V6} dev $TUN 2>/dev/null || true")
                     appendLine("ip -6 route replace default dev $TUN table $TABLE 2>/dev/null || true")
                     appendLine("ip -6 rule add fwmark $MARK table $TABLE priority $PRIORITY 2>/dev/null || true")
-                    append(buildMangleMarking("ip6tables", appUid, perAppEnabled, bypassApps, selectedUids))
+                    append(buildMangleMarking("ip6tables", appUid, perAppEnabled, directUids))
                 } else {
                     // v6 disabled: blackhole native v6 egress for the captured apps so they
                     // fall back to v4-through-proxy, matching what a v4-only VpnService does.
-                    append(buildV6Blackhole(appUid, perAppEnabled, bypassApps, selectedUids))
+                    append(buildV6Blackhole(appUid, perAppEnabled, directUids))
+                }
+                if (perAppEnabled && blockUids.isNotEmpty()) {
+                    append(buildBlockRules(blockUids))
                 }
             }
         }
@@ -255,11 +260,8 @@ object RootProxyManager {
         cmd: String,
         appUid: Int,
         perAppEnabled: Boolean,
-        bypassApps: Boolean,
-        selectedUids: List<String>,
+        directUids: List<String>,
     ): String {
-        val allowMode = perAppEnabled && !bypassApps
-        val bypassSelected = perAppEnabled && bypassApps && selectedUids.isNotEmpty()
         return buildString {
             appendLine("$cmd -t mangle -N $CHAIN 2>/dev/null || true")
             appendLine("$cmd -t mangle -F $CHAIN")
@@ -268,9 +270,9 @@ object RootProxyManager {
             // the 127.0.0.0/8 bypass below already RETURNs).
             appendLine("$cmd -t mangle -A $CHAIN -m mark --mark $FWMARK -j RETURN")
             appendLine("$cmd -t mangle -A $CHAIN -m owner --uid-owner $appUid -j RETURN")
-            // bypass mode: selected apps go fully direct (incl their DNS)
-            if (bypassSelected) {
-                selectedUids.forEach { appendLine("$cmd -t mangle -A $CHAIN -m owner --uid-owner $it -j RETURN") }
+            // direct apps go fully direct (incl their DNS)
+            if (perAppEnabled && directUids.isNotEmpty()) {
+                directUids.forEach { appendLine("$cmd -t mangle -A $CHAIN -m owner --uid-owner $it -j RETURN") }
             }
             // Route DNS through the core for ALL modes, with no uid filter. On Android the
             // DNS query is sent by netd (a shared system uid) on behalf of the app, not under
@@ -284,18 +286,8 @@ object RootProxyManager {
             // keep LAN / private destinations direct (per-family CIDR list)
             val cidrs = if (cmd == "ip6tables") bypassCidrsV6 else bypassCidrs
             cidrs.forEach { appendLine("$cmd -t mangle -A $CHAIN -d $it -j RETURN") }
-            if (allowMode) {
-                // Proxy ONLY the explicitly selected apps. If nothing resolved (e.g. the
-                // selected packages failed to resolve to uids at early boot), mark nothing
-                // instead of falling through to the catch-all below: a fail-open here would
-                // tunnel every unselected app — both a privacy leak and the "per-app proxies
-                // everything after a reboot" bug.
-                selectedUids.forEach { appendLine("$cmd -t mangle -A $CHAIN -m owner --uid-owner $it -j MARK --set-xmark $MARK") }
-            } else {
-                // all-apps mode (per-app off) or bypass mode: capture EVERY remaining uid
-                // (incl uid 0 + system uids)
-                appendLine("$cmd -t mangle -A $CHAIN -j MARK --set-xmark $MARK")
-            }
+            // capture remaining apps into tun
+            appendLine("$cmd -t mangle -A $CHAIN -j MARK --set-xmark $MARK")
             appendLine("$cmd -t mangle -D OUTPUT -j $CHAIN 2>/dev/null || true")
             appendLine("$cmd -t mangle -A OUTPUT -j $CHAIN")
         }
@@ -310,18 +302,14 @@ object RootProxyManager {
      *
      * Exemptions mirror the v4 chain: the tun2socks helper (fwmark), the app's own core (uid),
      * loopback, link-local / multicast (NDP/RA/MLD) and ULA/LAN destinations. Per-app selection
-     * is honored: in bypass mode the bypassed apps keep native v6; in proxy mode only the
-     * selected apps lose v6 (everything else stays fully direct).
+     * is honored: direct apps keep native v6; remaining apps lose v6 (fallback to v4 via proxy).
      */
     private fun buildV6Blackhole(
         appUid: Int,
         perAppEnabled: Boolean,
-        bypassApps: Boolean,
-        selectedUids: List<String>,
+        directUids: List<String>,
     ): String {
         val chain = AppConfig.ROOT_V6_CHAIN
-        val allowMode = perAppEnabled && !bypassApps
-        val bypassSelected = perAppEnabled && bypassApps && selectedUids.isNotEmpty()
         val reject = "-j REJECT --reject-with icmp6-adm-prohibited"
         return buildString {
             appendLine("ip6tables -t filter -N $chain 2>/dev/null || true")
@@ -331,20 +319,30 @@ object RootProxyManager {
             appendLine("ip6tables -t filter -A $chain -m owner --uid-owner $appUid -j RETURN")
             appendLine("ip6tables -t filter -A $chain -o lo -j RETURN")
             bypassCidrsV6.forEach { appendLine("ip6tables -t filter -A $chain -d $it -j RETURN") }
-            // bypass mode: bypassed apps keep their native v6
-            if (bypassSelected) {
-                selectedUids.forEach { appendLine("ip6tables -t filter -A $chain -m owner --uid-owner $it -j RETURN") }
+            // direct apps keep their native v6
+            if (perAppEnabled && directUids.isNotEmpty()) {
+                directUids.forEach { appendLine("ip6tables -t filter -A $chain -m owner --uid-owner $it -j RETURN") }
             }
-            if (allowMode) {
-                // proxy mode: only the selected apps lose v6 (so they fall back to v4-via-proxy).
-                // None resolved -> reject nothing, mirroring the v4 chain's fail-closed handling.
-                selectedUids.forEach { appendLine("ip6tables -t filter -A $chain -m owner --uid-owner $it $reject") }
-            } else {
-                // all-apps / bypass: reject everyone left
-                appendLine("ip6tables -t filter -A $chain $reject")
-            }
+            appendLine("ip6tables -t filter -A $chain $reject")
             appendLine("ip6tables -t filter -D OUTPUT -j $chain 2>/dev/null || true")
             appendLine("ip6tables -t filter -A OUTPUT -j $chain")
+        }
+    }
+
+    internal fun buildBlockRules(selectedUids: List<String>): String {
+        if (selectedUids.isEmpty()) return ""
+        return buildString {
+            for (cmd in listOf("iptables", "ip6tables")) {
+                val chain = if (cmd == "ip6tables") AppConfig.ROOT_V6_BLOCK_CHAIN else AppConfig.ROOT_BLOCK_CHAIN
+                val reject = if (cmd == "ip6tables") "-j REJECT --reject-with icmp6-adm-prohibited" else "-j REJECT --reject-with icmp-admin-prohibited"
+                appendLine("$cmd -t filter -N $chain 2>/dev/null || true")
+                appendLine("$cmd -t filter -F $chain")
+                selectedUids.forEach {
+                    appendLine("$cmd -t filter -A $chain -m owner --uid-owner $it $reject 2>/dev/null || $cmd -t filter -A $chain -m owner --uid-owner $it -j DROP")
+                }
+                appendLine("$cmd -t filter -D OUTPUT -j $chain 2>/dev/null || true")
+                appendLine("$cmd -t filter -A OUTPUT -j $chain")
+            }
         }
     }
 
@@ -464,6 +462,13 @@ object RootProxyManager {
             appendLine("ip6tables -t filter -D OUTPUT -j ${AppConfig.ROOT_V6_CHAIN} 2>/dev/null || true")
             appendLine("ip6tables -t filter -F ${AppConfig.ROOT_V6_CHAIN} 2>/dev/null || true")
             appendLine("ip6tables -t filter -X ${AppConfig.ROOT_V6_CHAIN} 2>/dev/null || true")
+            // Block chains (both families, only set up in block mode; harmless if absent)
+            appendLine("iptables -t filter -D OUTPUT -j ${AppConfig.ROOT_BLOCK_CHAIN} 2>/dev/null || true")
+            appendLine("iptables -t filter -F ${AppConfig.ROOT_BLOCK_CHAIN} 2>/dev/null || true")
+            appendLine("iptables -t filter -X ${AppConfig.ROOT_BLOCK_CHAIN} 2>/dev/null || true")
+            appendLine("ip6tables -t filter -D OUTPUT -j ${AppConfig.ROOT_V6_BLOCK_CHAIN} 2>/dev/null || true")
+            appendLine("ip6tables -t filter -F ${AppConfig.ROOT_V6_BLOCK_CHAIN} 2>/dev/null || true")
+            appendLine("ip6tables -t filter -X ${AppConfig.ROOT_V6_BLOCK_CHAIN} 2>/dev/null || true")
             // routing rule + table
             appendLine("ip rule del fwmark $MARK table $TABLE priority $PRIORITY 2>/dev/null || true")
             appendLine("ip -6 rule del fwmark $MARK table $TABLE priority $PRIORITY 2>/dev/null || true")

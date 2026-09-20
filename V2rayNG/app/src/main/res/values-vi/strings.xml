@@ -163,6 +163,18 @@
     <string name="menu_item_import_proxy_app">Nhập từ bảng tạm</string>
     <string name="per_app_proxy_settings">Cài đặt theo ứng dụng</string>
     <string name="per_app_proxy_settings_enable">Bật cài đặt theo ứng dụng</string>
+    <string name="per_app_proxy_mode_proxy">Proxy</string>
+    <string name="per_app_proxy_mode_bypass">Bỏ qua</string>
+    <string name="per_app_proxy_mode_direct">Trực tiếp</string>
+    <string name="per_app_proxy_mode_block">Chặn</string>
+    <string name="per_app_proxy_filter_all">Tất cả</string>
+    <string name="menu_item_set_all_proxy">Đặt tất cả thành Proxy</string>
+    <string name="menu_item_set_all_direct">Đặt tất cả thành Trực tiếp</string>
+    <string name="menu_item_set_all_block">Đặt tất cả thành Chặn</string>
+    <string name="menu_item_reset_all">Đặt lại về mặc định</string>
+    <string name="per_app_proxy_mode_proxy_summary">Ứng dụng đã chọn dùng proxy, ứng dụng chưa chọn kết nối trực tiếp</string>
+    <string name="per_app_proxy_mode_bypass_summary">Ứng dụng đã chọn kết nối trực tiếp, ứng dụng chưa chọn dùng proxy</string>
+    <string name="per_app_proxy_mode_block_summary">Ứng dụng đã chọn bị chặn mạng hoàn toàn, ứng dụng chưa chọn dùng proxy</string>
     <string name="app_picker_unknown_app">Ứng dụng không xác định (không nhận dạng được UID)</string>
 
     <!-- Preferences -->
@@ -171,7 +183,7 @@
     <string name="title_core_settings">Cài đặt lõi</string>
     <string name="title_vpn_settings">Cài đặt VPN</string>
     <string name="title_pref_per_app_proxy">Proxy theo từng ứng dụng</string>
-    <string name="summary_pref_per_app_proxy">Thông thường: ứng dụng đã chọn dùng proxy, ứng dụng chưa chọn kết nối trực tiếp;\nChế độ bỏ qua: ứng dụng đã chọn kết nối trực tiếp, ứng dụng chưa chọn dùng proxy.\nTrong trình đơn có tùy chọn tự động chọn các ứng dụng sẽ dùng proxy.</string>
+    <string name="summary_pref_per_app_proxy">Mặc định là Proxy. Bạn có thể định tuyến riêng cho từng ứng dụng:\nProxy: kết nối qua proxy;\nTrực tiếp: bỏ qua proxy và kết nối trực tiếp;\nChặn: ngắt kết nối mạng hoàn toàn.</string>
     <string name="title_pref_is_booted">Kết nối sau khi thiết bị khởi động</string>
     <string name="summary_pref_is_booted">Tự động kết nối với máy chủ đã chọn sau khi thiết bị khởi động. Android có thể hạn chế khởi chạy trong nền.</string>
     <string name="title_system_vpn_settings">Cài đặt VPN hệ thống</string>

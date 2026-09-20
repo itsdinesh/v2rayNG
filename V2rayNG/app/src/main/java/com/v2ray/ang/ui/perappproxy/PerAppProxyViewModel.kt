@@ -5,6 +5,8 @@ import android.content.Context
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.dto.AppInfo
 import com.v2ray.ang.dto.UrlContentRequest
+import com.v2ray.ang.enums.AppRoutingAction
+import com.v2ray.ang.enums.PerAppProxyMode
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.handler.SettingsChangeManager
 import com.v2ray.ang.handler.SettingsManager
@@ -22,17 +24,28 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.text.Collator
 
+enum class RoutingFilterCategory {
+    ALL,
+    PROXY,
+    DIRECT,
+    BLOCK
+}
+
 /**
  * ViewModel for PerAppProxy screen.
- * Holds all UI state and business logic.
+ * Holds all UI state and business logic for mixed per-app routing.
  */
 class PerAppProxyViewModel(application: Application) : BaseViewModel(application) {
 
-    // Blacklist (apps to be proxied or bypassed)
-    private val _blacklist = MutableStateFlow(loadBlacklist())
-    val blacklist: StateFlow<Set<String>> = _blacklist.asStateFlow()
+    private val _directApps = MutableStateFlow(SettingsManager.getPerAppDirectApps())
+    val directApps: StateFlow<Set<String>> = _directApps.asStateFlow()
 
-    // UI states
+    private val _blockApps = MutableStateFlow(SettingsManager.getPerAppBlockApps())
+    val blockApps: StateFlow<Set<String>> = _blockApps.asStateFlow()
+
+    private val _filterCategory = MutableStateFlow(RoutingFilterCategory.ALL)
+    val filterCategory: StateFlow<RoutingFilterCategory> = _filterCategory.asStateFlow()
+
     private val _displayedApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val displayedApps: StateFlow<List<AppInfo>> = _displayedApps.asStateFlow()
 
@@ -41,51 +54,65 @@ class PerAppProxyViewModel(application: Application) : BaseViewModel(application
     )
     val perAppProxyEnabled: StateFlow<Boolean> = _perAppProxyEnabled.asStateFlow()
 
-    private val _bypassApps = MutableStateFlow(
-        MmkvManager.decodeSettingsBool(AppConfig.PREF_BYPASS_APPS, false)
-    )
-    val bypassApps: StateFlow<Boolean> = _bypassApps.asStateFlow()
-
     // Cached full list for filtering
     private var appsAll: List<AppInfo>? = null
     private var currentQuery = ""
     private var isAppListLoading = false
 
-    // Blacklist operations
-    fun toggle(packageName: String) {
-        val currentSelection = _blacklist.value
-        val newSelection = if (packageName in currentSelection) {
-            currentSelection - packageName
-        } else {
-            currentSelection + packageName
+    val totalCount: Int get() = appsAll?.size ?: 0
+    val directCount: Int get() = _directApps.value.size
+    val blockCount: Int get() = _blockApps.value.size
+    val proxyCount: Int get() = (totalCount - directCount - blockCount).coerceAtLeast(0)
+
+    fun getAppRoutingAction(packageName: String): AppRoutingAction {
+        return when {
+            _blockApps.value.contains(packageName) -> AppRoutingAction.BLOCK
+            _directApps.value.contains(packageName) -> AppRoutingAction.DIRECT
+            else -> AppRoutingAction.PROXY
         }
-        replaceBlacklist(newSelection)
-        SettingsChangeManager.makeRestartService()
     }
 
-    private fun loadBlacklist(): Set<String> {
-        return MmkvManager.decodeSettingsStringSet(AppConfig.PREF_PER_APP_PROXY_SET)?.toSet() ?: emptySet()
+    fun setAppRouting(packageName: String, action: AppRoutingAction) {
+        val currentDirect = _directApps.value
+        val currentBlock = _blockApps.value
+        val newDirect: Set<String>
+        val newBlock: Set<String>
+        when (action) {
+            AppRoutingAction.PROXY -> {
+                newDirect = currentDirect - packageName
+                newBlock = currentBlock - packageName
+            }
+            AppRoutingAction.DIRECT -> {
+                newDirect = currentDirect + packageName
+                newBlock = currentBlock - packageName
+            }
+            AppRoutingAction.BLOCK -> {
+                newDirect = currentDirect - packageName
+                newBlock = currentBlock + packageName
+            }
+        }
+        if (newDirect != currentDirect || newBlock != currentBlock) {
+            _directApps.value = newDirect
+            _blockApps.value = newBlock
+            SettingsManager.setPerAppRoutingSets(newDirect, newBlock)
+            SettingsChangeManager.makeRestartService()
+            updateDisplayedApps()
+        }
     }
 
-    private fun replaceBlacklist(newBlacklist: Set<String>) {
-        if (newBlacklist == _blacklist.value) return
-
-        _blacklist.value = newBlacklist
-        MmkvManager.encodeSettings(AppConfig.PREF_PER_APP_PROXY_SET, newBlacklist.toMutableSet())
+    fun setFilterCategory(category: RoutingFilterCategory) {
+        if (_filterCategory.value != category) {
+            _filterCategory.value = category
+            updateDisplayedApps()
+        }
     }
 
-    // Per‑app proxy switch
+    // Per‑app proxy master switch
     fun setPerAppProxyEnabled(enabled: Boolean) {
         if (_perAppProxyEnabled.value != enabled) {
             _perAppProxyEnabled.value = enabled
             MmkvManager.encodeSettings(AppConfig.PREF_PER_APP_PROXY, enabled)
-        }
-    }
-
-    fun setBypassAppsEnabled(enabled: Boolean) {
-        if (_bypassApps.value != enabled) {
-            _bypassApps.value = enabled
-            MmkvManager.encodeSettings(AppConfig.PREF_BYPASS_APPS, enabled)
+            SettingsChangeManager.makeRestartService()
         }
     }
 
@@ -98,11 +125,10 @@ class PerAppProxyViewModel(application: Application) : BaseViewModel(application
         launchLoading {
             try {
                 val apps = withContext(Dispatchers.IO) {
-                    val list = AppManagerUtil.loadNetworkAppList(applicationContext)
-                    sortApps(list)
+                    AppManagerUtil.loadNetworkAppList(applicationContext)
                 }
                 appsAll = apps
-                _displayedApps.value = applyFilter(currentQuery)
+                updateDisplayedApps()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -115,28 +141,48 @@ class PerAppProxyViewModel(application: Application) : BaseViewModel(application
 
     fun filterApps(query: String) {
         currentQuery = query
-        _displayedApps.value = applyFilter(query)
+        updateDisplayedApps()
     }
 
-    private fun applyFilter(query: String): List<AppInfo> {
-        val apps = appsAll ?: return emptyList()
-        if (query.isEmpty()) return apps
+    private fun updateDisplayedApps() {
+        val apps = appsAll ?: return
+        val direct = _directApps.value
+        val block = _blockApps.value
+        val query = currentQuery
 
-        return apps.filter {
-            it.appName.contains(query, ignoreCase = true) ||
-                    it.packageName.contains(query, ignoreCase = true)
+        val filtered = apps.filter { app ->
+            val matchesQuery = query.isEmpty() ||
+                    app.appName.contains(query, ignoreCase = true) ||
+                    app.packageName.contains(query, ignoreCase = true)
+            if (!matchesQuery) return@filter false
+
+            when (_filterCategory.value) {
+                RoutingFilterCategory.ALL -> true
+                RoutingFilterCategory.PROXY -> !direct.contains(app.packageName) && !block.contains(app.packageName)
+                RoutingFilterCategory.DIRECT -> direct.contains(app.packageName)
+                RoutingFilterCategory.BLOCK -> block.contains(app.packageName)
+            }
         }
+        _displayedApps.value = sortApps(filtered)
     }
 
     private fun sortApps(apps: List<AppInfo>): List<AppInfo> {
         val collator = Collator.getInstance()
-        val selectedPackages = _blacklist.value
+        val direct = _directApps.value
+        val block = _blockApps.value
         return apps.sortedWith { p1, p2 ->
-            val s1 = p1.packageName in selectedPackages
-            val s2 = p2.packageName in selectedPackages
+            val prio1 = when {
+                block.contains(p1.packageName) -> 3
+                direct.contains(p1.packageName) -> 2
+                else -> 1
+            }
+            val prio2 = when {
+                block.contains(p2.packageName) -> 3
+                direct.contains(p2.packageName) -> 2
+                else -> 1
+            }
             when {
-                s1 && !s2 -> -1
-                !s1 && s2 -> 1
+                prio1 != prio2 -> prio2.compareTo(prio1)
                 p1.isSystemApp && !p2.isSystemApp -> 1
                 !p1.isSystemApp && p2.isSystemApp -> -1
                 else -> collator.compare(p1.appName, p2.appName)
@@ -145,23 +191,40 @@ class PerAppProxyViewModel(application: Application) : BaseViewModel(application
     }
 
     // Bulk actions
-    fun selectAll() {
-        val displayedApps = _displayedApps.value
-        val currentSelection = _blacklist.value
-        val allSelected = displayedApps.all { it.packageName in currentSelection }
-        val newSelection = currentSelection.toMutableSet().apply {
-            displayedApps.forEach { app ->
-                if (allSelected) remove(app.packageName) else add(app.packageName)
+    fun setAllDisplayed(action: AppRoutingAction) {
+        val displayed = _displayedApps.value
+        val newDirect = _directApps.value.toMutableSet()
+        val newBlock = _blockApps.value.toMutableSet()
+        displayed.forEach { app ->
+            val pkg = app.packageName
+            when (action) {
+                AppRoutingAction.PROXY -> {
+                    newDirect.remove(pkg)
+                    newBlock.remove(pkg)
+                }
+                AppRoutingAction.DIRECT -> {
+                    newDirect.add(pkg)
+                    newBlock.remove(pkg)
+                }
+                AppRoutingAction.BLOCK -> {
+                    newDirect.remove(pkg)
+                    newBlock.add(pkg)
+                }
             }
         }
-        replaceBlacklist(newSelection)
+        _directApps.value = newDirect
+        _blockApps.value = newBlock
+        SettingsManager.setPerAppRoutingSets(newDirect, newBlock)
         enablePerAppProxyAndRestart()
+        updateDisplayedApps()
     }
 
-    fun invertSelection() {
-        val packageNames = _displayedApps.value.map { it.packageName }
-        replaceBlacklist(AppSelection.invert(_blacklist.value, packageNames))
-        enablePerAppProxyAndRestart()
+    fun resetAll() {
+        _directApps.value = emptySet()
+        _blockApps.value = emptySet()
+        SettingsManager.setPerAppRoutingSets(emptySet(), emptySet())
+        SettingsChangeManager.makeRestartService()
+        updateDisplayedApps()
     }
 
     fun selectProxyAppAuto(context: Context) {
@@ -206,25 +269,82 @@ class PerAppProxyViewModel(application: Application) : BaseViewModel(application
     fun importProxyApp(content: String?, context: Context) {
         if (content.isNullOrEmpty()) return
 
-        val applicationContext = context.applicationContext
-        launchLoading {
-            val success = applyProxyAppList(
-                content = content,
-                context = applicationContext,
-                forceGoogleApps = false
-            )
-            if (success) {
-                enablePerAppProxyAndRestart()
+        val newDirect = _directApps.value.toMutableSet()
+        val newBlock = _blockApps.value.toMutableSet()
+
+        val lines = content.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        val firstLine = lines.firstOrNull()?.lowercase()
+
+        val hasPrefixes = lines.any { it.startsWith("direct:") || it.startsWith("block:") || it.startsWith("proxy:") }
+        if (hasPrefixes) {
+            lines.forEach { line ->
+                val parts = line.split(":", limit = 2)
+                if (parts.size == 2) {
+                    val act = parts[0].trim().lowercase()
+                    val pkg = parts[1].trim()
+                    when (act) {
+                        "direct" -> {
+                            newDirect.add(pkg)
+                            newBlock.remove(pkg)
+                        }
+                        "block" -> {
+                            newDirect.remove(pkg)
+                            newBlock.add(pkg)
+                        }
+                        "proxy" -> {
+                            newDirect.remove(pkg)
+                            newBlock.remove(pkg)
+                        }
+                    }
+                }
+            }
+        } else {
+            val legacyMode = when (firstLine) {
+                "true", "bypass" -> PerAppProxyMode.BYPASS
+                "false", "proxy" -> PerAppProxyMode.PROXY
+                "block" -> PerAppProxyMode.BLOCK
+                else -> null
+            }
+            val pkgLines = if (legacyMode != null) lines.drop(1) else lines
+            when (legacyMode) {
+                PerAppProxyMode.BLOCK -> {
+                    pkgLines.forEach {
+                        newBlock.add(it)
+                        newDirect.remove(it)
+                    }
+                }
+                PerAppProxyMode.BYPASS -> {
+                    pkgLines.forEach {
+                        newDirect.add(it)
+                        newBlock.remove(it)
+                    }
+                }
+                else -> {
+                    pkgLines.forEach {
+                        newDirect.remove(it)
+                        newBlock.remove(it)
+                    }
+                }
             }
         }
+
+        _directApps.value = newDirect
+        _blockApps.value = newBlock
+        SettingsManager.setPerAppRoutingSets(newDirect, newBlock)
+        enablePerAppProxyAndRestart()
+        updateDisplayedApps()
     }
 
     fun exportProxyApp(): String {
         return buildString {
-            append(_bypassApps.value)
-            _blacklist.value.forEach { packageName ->
+            append("v2rayng-per-app-v2")
+            _directApps.value.forEach { packageName ->
                 append(System.lineSeparator())
-                append(packageName)
+                append("direct:$packageName")
+            }
+            _blockApps.value.forEach { packageName ->
+                append(System.lineSeparator())
+                append("block:$packageName")
             }
         }
     }
@@ -240,16 +360,19 @@ class PerAppProxyViewModel(application: Application) : BaseViewModel(application
             } else content
             if (proxyAppList.isNullOrEmpty()) return false
 
-            val bypassApps = _bypassApps.value
             val newBlacklist = withContext(Dispatchers.Default) {
                 AppSelection.fromProxyList(
                     packageNames = installedApps.map { it.packageName },
                     proxyAppList = proxyAppList,
-                    bypassApps = bypassApps,
+                    bypassApps = true,
                     forceGoogleApps = forceGoogleApps
                 )
             }
-            replaceBlacklist(newBlacklist)
+            // In default-proxy mode, apps not needing proxy are set to direct
+            val newDirect = newBlacklist.toMutableSet()
+            _directApps.value = newDirect
+            SettingsManager.setPerAppRoutingSets(newDirect, _blockApps.value)
+            updateDisplayedApps()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

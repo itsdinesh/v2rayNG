@@ -163,6 +163,18 @@
     <string name="menu_item_import_proxy_app">从剪贴板导入</string>
     <string name="per_app_proxy_settings">分应用设置</string>
     <string name="per_app_proxy_settings_enable">启用分应用</string>
+    <string name="per_app_proxy_mode_proxy">代理</string>
+    <string name="per_app_proxy_mode_bypass">绕行</string>
+    <string name="per_app_proxy_mode_direct">直连</string>
+    <string name="per_app_proxy_mode_block">阻止</string>
+    <string name="per_app_proxy_filter_all">全部</string>
+    <string name="menu_item_set_all_proxy">全部设为代理</string>
+    <string name="menu_item_set_all_direct">全部设为直连</string>
+    <string name="menu_item_set_all_block">全部设为阻止</string>
+    <string name="menu_item_reset_all">重置为默认</string>
+    <string name="per_app_proxy_mode_proxy_summary">勾选的应用使用代理，未勾选的应用直连</string>
+    <string name="per_app_proxy_mode_bypass_summary">勾选的应用直连，未勾选的应用使用代理</string>
+    <string name="per_app_proxy_mode_block_summary">勾选的应用完全禁止联网，未勾选的应用使用代理</string>
     <string name="app_picker_unknown_app">未知应用（无法识别 UID）</string>
 
     <!-- Preferences -->
@@ -171,7 +183,7 @@
     <string name="title_core_settings">核心设置</string>
     <string name="title_vpn_settings">VPN 设置</string>
     <string name="title_pref_per_app_proxy">分应用代理</string>
-    <string name="summary_pref_per_app_proxy">常规：勾选的应用使用代理，未勾选的应用直连；\n绕行模式：勾选的应用直连，未勾选的应用使用代理。\n菜单中可自动选择需要使用代理的应用。</string>
+    <string name="summary_pref_per_app_proxy">默认全部走代理。可为每个应用单独设置：\n代理：通过代理联网；\n直连：绕过代理直接联网；\n阻止：完全禁止联网。</string>
     <string name="title_pref_is_booted">设备启动后自动连接</string>
     <string name="summary_pref_is_booted">设备启动后自动连接到所选服务器。Android 可能会限制后台启动。</string>
     <string name="title_system_vpn_settings">系统 VPN 设置</string>

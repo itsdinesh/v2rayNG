@@ -163,6 +163,18 @@
     <string name="menu_item_import_proxy_app">وارد کردن از کلیپ‌ بورد</string>
     <string name="per_app_proxy_settings">تنظیمات به تفکیک برنامه</string>
     <string name="per_app_proxy_settings_enable">فعال‌سازی به تفکیک برنامه</string>
+    <string name="per_app_proxy_mode_proxy">پروکسی</string>
+    <string name="per_app_proxy_mode_bypass">دور زدن</string>
+    <string name="per_app_proxy_mode_direct">مستقیم</string>
+    <string name="per_app_proxy_mode_block">مسدود کردن</string>
+    <string name="per_app_proxy_filter_all">همه</string>
+    <string name="menu_item_set_all_proxy">تنظیم همه روی پروکسی</string>
+    <string name="menu_item_set_all_direct">تنظیم همه روی مستقیم</string>
+    <string name="menu_item_set_all_block">تنظیم همه روی مسدود</string>
+    <string name="menu_item_reset_all">بازنشانی به حالت پیش‌فرض</string>
+    <string name="per_app_proxy_mode_proxy_summary">برنامه‌های انتخاب‌شده از پروکسی استفاده می‌کنند، انتخاب‌نشده‌ها مستقیماً متصل می‌شوند</string>
+    <string name="per_app_proxy_mode_bypass_summary">برنامه‌های انتخاب‌شده مستقیماً متصل می‌شوند، انتخاب‌نشده‌ها از پروکسی استفاده می‌کنند</string>
+    <string name="per_app_proxy_mode_block_summary">دسترسی برنامه‌های انتخاب‌شده به اینترنت کاملاً مسدود می‌شود، انتخاب‌نشده‌ها از پروکسی استفاده می‌کنند</string>
     <string name="app_picker_unknown_app">برنامه ناشناس (UID شناسایی‌نشده)</string>
 
     <!-- Preferences -->
@@ -171,7 +183,7 @@
     <string name="title_core_settings">تنظیمات هسته</string>
     <string name="title_vpn_settings">تنظیمات VPN</string>
     <string name="title_pref_per_app_proxy">پروکسی به تفکیک برنامه</string>
-    <string name="summary_pref_per_app_proxy">حالت عادی: برنامه‌های انتخاب‌شده از پروکسی استفاده می‌کنند و برنامه‌های انتخاب‌نشده مستقیماً متصل می‌شوند؛\nحالت دور زدن: برنامه‌های انتخاب‌شده مستقیماً متصل می‌شوند و برنامه‌های انتخاب‌نشده از پروکسی استفاده می‌کنند.\nگزینهٔ انتخاب خودکار برنامه‌هایی که باید از پروکسی استفاده کنند در منو قرار دارد.</string>
+    <string name="summary_pref_per_app_proxy">پیش‌فرض پروکسی است. می‌توانید هر برنامه را جداگانه تنظیم کنید:\nپروکسی: اتصال از طریق پروکسی؛\nمستقیم: دور زدن پروکسی و اتصال مستقیم؛\nمسدود: قطع کامل دسترسی به اینترنت.</string>
     <string name="title_pref_is_booted">اتصال پس از راه‌اندازی دستگاه</string>
     <string name="summary_pref_is_booted">پس از راه‌اندازی دستگاه، به‌طور خودکار به سرور انتخاب‌شده متصل شود. ممکن است Android اجرای پس‌زمینه را محدود کند.</string>
     <string name="title_system_vpn_settings">تنظیمات VPN سیستم</string>

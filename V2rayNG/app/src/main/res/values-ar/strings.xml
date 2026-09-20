@@ -163,6 +163,18 @@
     <string name="menu_item_import_proxy_app">استيراد من الحافظة</string>
     <string name="per_app_proxy_settings">إعدادات كل تطبيق</string>
     <string name="per_app_proxy_settings_enable">تمكين الإعدادات لكل تطبيق</string>
+    <string name="per_app_proxy_mode_proxy">الوكيل</string>
+    <string name="per_app_proxy_mode_bypass">التجاوز</string>
+    <string name="per_app_proxy_mode_direct">مباشر</string>
+    <string name="per_app_proxy_mode_block">الحظر</string>
+    <string name="per_app_proxy_filter_all">الكل</string>
+    <string name="menu_item_set_all_proxy">تعيين الكل إلى وكيل</string>
+    <string name="menu_item_set_all_direct">تعيين الكل إلى مباشر</string>
+    <string name="menu_item_set_all_block">تعيين الكل إلى حظر</string>
+    <string name="menu_item_reset_all">إعادة التعيين إلى الافتراضي</string>
+    <string name="per_app_proxy_mode_proxy_summary">تستخدم التطبيقات المحددة الوكيل، وتتصل غير المحددة مباشرة</string>
+    <string name="per_app_proxy_mode_bypass_summary">تتصل التطبيقات المحددة مباشرة، وتستخدم غير المحددة الوكيل</string>
+    <string name="per_app_proxy_mode_block_summary">يتم حظر التطبيقات المحددة تمامًا من الوصول للشبكة، وتستخدم غير المحددة الوكيل</string>
     <string name="app_picker_unknown_app">تطبيق غير معروف (UID غير محدد)</string>
 
     <!-- Preferences -->
@@ -171,7 +183,7 @@
     <string name="title_core_settings">إعدادات النواة</string>
     <string name="title_vpn_settings">إعدادات VPN</string>
     <string name="title_pref_per_app_proxy">الوكيل لكل تطبيق</string>
-    <string name="summary_pref_per_app_proxy">عام: تستخدم التطبيقات المحددة الوكيل، وتتصل التطبيقات غير المحددة مباشرة؛\nوضع التجاوز: تتصل التطبيقات المحددة مباشرة، وتستخدم التطبيقات غير المحددة الوكيل.\nيتوفر في القائمة خيار لتحديد التطبيقات التي ستستخدم الوكيل تلقائيًا.</string>
+    <string name="summary_pref_per_app_proxy">الافتراضي هو الوكيل. يمكنك تخصيص التوجيه لكل تطبيق بشكل فردي:\nالوكيل: الاتصال عبر الوكيل؛\nمباشر: تجاوز الوكيل والاتصال مباشرة؛\nالحظر: حظر الوصول إلى الشبكة تمامًا.</string>
     <string name="title_pref_is_booted">الاتصال بعد إقلاع الجهاز</string>
     <string name="summary_pref_is_booted">الاتصال تلقائياً بالخادم المحدد بعد إقلاع الجهاز. قد يقيّد Android بدء التشغيل في الخلفية.</string>
     <string name="title_system_vpn_settings">إعدادات VPN للنظام</string>

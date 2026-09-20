@@ -163,6 +163,18 @@
     <string name="menu_item_import_proxy_app">و من ٱووردن ز کلیپ بورد</string>
     <string name="per_app_proxy_settings">سامووا ب تفکیک برنومه</string>
     <string name="per_app_proxy_settings_enable">ره وندن ب تفکیک برنومه</string>
+    <string name="per_app_proxy_mode_proxy">پروکسی</string>
+    <string name="per_app_proxy_mode_bypass">دور زیڌن</string>
+    <string name="per_app_proxy_mode_direct">موستقیم</string>
+    <string name="per_app_proxy_mode_block">بلوک</string>
+    <string name="per_app_proxy_filter_all">کول</string>
+    <string name="menu_item_set_all_proxy">تنظیم کول و ری پروکسی</string>
+    <string name="menu_item_set_all_direct">تنظیم کول و ری موستقیم</string>
+    <string name="menu_item_set_all_block">تنظیم کول و ری بلوک</string>
+    <string name="menu_item_reset_all">واگردونی ب حال پیش فرض</string>
+    <string name="per_app_proxy_mode_proxy_summary">برنومه پسند وابیڌه وا ی پروکسی منپیز ابۊ، برنومه پسند نوابیڌه موستقیمن منپیز ابۊ</string>
+    <string name="per_app_proxy_mode_bypass_summary">برنومه پسند وابیڌه موستقیمن منپیز ابۊ، برنومه پسند نوابیڌه وا ی پروکسی منپیز ابۊ</string>
+    <string name="per_app_proxy_mode_block_summary">برنومه پسند وابیڌه ب طور کامل جلوی رسیڌن ب توریش گرته ابۊ، برنومه پسند نوابیڌه وا ی پروکسی منپیز ابۊ</string>
     <string name="app_picker_unknown_app">برنومه ناناس (UID ناساڌه)</string>
 
     <!-- Preferences -->
@@ -171,7 +183,7 @@
     <string name="title_core_settings">سامووا هسته</string>
     <string name="title_vpn_settings">سامووا VPN</string>
     <string name="title_pref_per_app_proxy">پروکسی و ری برنومه</string>
-    <string name="summary_pref_per_app_proxy">پوی وولاتی: برنومه پسند وابیڌه وا ی پروکسی منپیز ابۊ، برنومه پسند نوابیڌه موستقیمن منپیز ابۊ.\nحالت دور زیڌن: برنومه پسند وابیڌه موستقیمن منپیز ابۊ، برنومه پسند نوابیڌه وا ی پروکسی منپیز ابۊ.\nپسند خوتکار برنومه یلی ک وا ی پروکسی منپیز ابۊن من نومگه امکووݩ پذیر هڌ.</string>
+    <string name="summary_pref_per_app_proxy">پیش فرض پروکسی هڌ. اتونین هر برنومه ن جوداگونه تنظیم بکنین:\nپروکسی: منپیز وابیڌن ز پروکسی؛\nموستقیم: دور زیڌن ز پروکسی و منپیز موستقیم؛\nبلوک: گرته وابیڌن کول رسیڌن ب توریش.</string>
     <string name="title_pref_is_booted">منپیز بئڌ ره وندن دسگا</string>
     <string name="summary_pref_is_booted">بئڌ ره وندن دسگا، خوساخوس و سرور پسند بیڌه منپیز ابۊ. Android گاشڌ ره وندن من پس زمینه ن مئدۊد کونه.</string>
     <string name="title_system_vpn_settings">سامووا VPN سیستوم</string>

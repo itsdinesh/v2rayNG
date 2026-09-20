@@ -17,6 +17,7 @@ import com.v2ray.ang.BuildConfig
 import com.v2ray.ang.contracts.ServiceControl
 import com.v2ray.ang.contracts.Tun2SocksControl
 import com.v2ray.ang.core.CoreServiceManager
+import com.v2ray.ang.enums.PerAppProxyMode
 import com.v2ray.ang.handler.AppLocaleManager
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.handler.NotificationManager
@@ -267,31 +268,17 @@ class CoreVpnService : VpnService(), ServiceControl {
         val selfPackageName = BuildConfig.APPLICATION_ID
 
         // If per-app proxy is not enabled, disallow the VPN service's own package and return
-        if (MmkvManager.decodeSettingsBool(AppConfig.PREF_PER_APP_PROXY) == false) {
+        if (!SettingsManager.isPerAppRoutingActive()) {
             builder.addDisallowedApplication(selfPackageName)
             return
         }
 
-        // If no apps are selected, disallow the VPN service's own package and return
-        val apps = MmkvManager.decodeSettingsStringSet(AppConfig.PREF_PER_APP_PROXY_SET)
-        if (apps.isNullOrEmpty()) {
-            builder.addDisallowedApplication(selfPackageName)
-            return
-        }
+        val directApps = SettingsManager.getPerAppDirectApps().toMutableSet()
+        directApps.add(selfPackageName)
 
-        val bypassApps = MmkvManager.decodeSettingsBool(AppConfig.PREF_BYPASS_APPS)
-        // Handle the VPN service's own package according to the mode
-        if (bypassApps) apps.add(selfPackageName) else apps.remove(selfPackageName)
-
-        apps.forEach {
+        directApps.forEach { pkg ->
             try {
-                if (bypassApps) {
-                    // In bypass mode, disallow the selected apps
-                    builder.addDisallowedApplication(it)
-                } else {
-                    // In proxy mode, only allow the selected apps
-                    builder.addAllowedApplication(it)
-                }
+                builder.addDisallowedApplication(pkg)
             } catch (e: PackageManager.NameNotFoundException) {
                 LogUtil.e(AppConfig.TAG, "StartCore-VPN: Failed to configure app", e)
             }
